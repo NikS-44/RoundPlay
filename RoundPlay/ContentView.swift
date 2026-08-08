@@ -15,7 +15,7 @@ struct ContentView: View {
     var body: some View {
         TabView {
             Tab("Rounds", systemImage: "flag.circle") {
-                NavigationStack { Text("Rounds").navigationTitle("Rounds") }
+                NavigationStack { RoundsHomeView() }
             }
             Tab("Games", systemImage: "list.bullet.rectangle") {
                 NavigationStack { GameLibraryView() }
