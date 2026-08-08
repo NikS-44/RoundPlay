@@ -1,8 +1,6 @@
 import SwiftUI
 
 /// User-selected light/dark override, persisted in `UserDefaults` via `@AppStorage`.
-///
-/// Ported from UpKeepr unchanged — the pattern is domain-neutral.
 enum AppearancePreference: String, CaseIterable, Identifiable {
     case system
     case light

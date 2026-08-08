@@ -18,7 +18,7 @@ struct ContentView: View {
                 NavigationStack { Text("Rounds").navigationTitle("Rounds") }
             }
             Tab("Games", systemImage: "list.bullet.rectangle") {
-                NavigationStack { Text("Game Library").navigationTitle("Games") }
+                NavigationStack { DesignSystemGallery() }
             }
             Tab("Players", systemImage: "person.2") {
                 NavigationStack { Text("Players").navigationTitle("Players") }
