@@ -21,7 +21,7 @@ struct ContentView: View {
                 NavigationStack { DesignSystemGallery() }
             }
             Tab("Players", systemImage: "person.2") {
-                NavigationStack { Text("Players").navigationTitle("Players") }
+                NavigationStack { PlayerListView() }
             }
         }
         .preferredColorScheme(appearancePreference.colorScheme)
