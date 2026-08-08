@@ -1,0 +1,29 @@
+name: RoundPlay
+options:
+  bundleIdPrefix: app.roundplay
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+
+packages:
+  RoundPlayEngine:
+    path: Packages/RoundPlayEngine
+
+targets:
+  RoundPlay:
+    type: application
+    platform: iOS
+    sources:
+      - path: RoundPlay
+    dependencies:
+      - package: RoundPlayEngine
+        product: RoundPlayEngine
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.roundplay.RoundPlay
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "6.2"
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        ENABLE_USER_SCRIPT_SANDBOXING: YES
