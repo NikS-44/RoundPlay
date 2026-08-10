@@ -110,8 +110,17 @@ struct RoundsHomeView: View {
                                 Spacer()
                             }
                         }
-                        .padding(.vertical, 6)
-                        .roundPlayListRowSeparatorFullWidth()
+                        // A light card, deliberately *not* the near-black board used for a round
+                        // in progress. Sharing that treatment would cost the one piece of
+                        // hierarchy this screen actually needs — the live round has to be the
+                        // thing your eye lands on when you open the app mid-round. What the card
+                        // does buy is holding the round and its Play Again chip together; as bare
+                        // rows they were two elements joined only by whitespace and a hairline.
+                        .padding(14)
+                        .themedCard(cornerRadius: 16, fill: .secondaryBackground)
+                        .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) {
                                 delete(round)
