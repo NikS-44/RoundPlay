@@ -53,18 +53,30 @@ struct GameSetupView: View {
             }
         }
         .safeAreaInset(edge: .bottom) {
-            // The stake field opens a decimal pad, which has no return key. Letting the keyboard
-            // shove this button up put it under the user's thumb mid-typing with no way out, so
-            // the button holds its spot and the keyboard toolbar below owns dismissal.
+            // Hidden rather than removed while a stake is being typed: the keyboard's Done pill
+            // sits exactly here, and since the button no longer slides out of the way (below),
+            // the two would overlap. Keeping it in the layout means nothing shifts — the button
+            // just fades out under the pill and comes back when Done is tapped.
             RoundBuilderContinueButton(title: continueButtonTitle, isEnabled: model.canStart, action: onStart)
-                .ignoresSafeArea(.keyboard, edges: .bottom)
+                .opacity(focusedStake == nil ? 1 : 0)
+                .disabled(focusedStake != nil)
+                .animation(.easeOut(duration: 0.15), value: focusedStake)
         }
+        // The stake field opens a decimal pad, which has no return key. Letting the keyboard shove
+        // the continue button up stacked it against the keyboard's own Done bar with no way out.
+        //
+        // This has to sit on the whole screen, not on the inset's content: the keyboard pushes the
+        // *inset*, so telling only its child to ignore the keyboard changed nothing. The button now
+        // stays where it is and the keyboard simply covers it until Done is tapped.
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
                 Button("Done") { focusedStake = nil }
                     .font(RoundPlayFont.archivo(17, .bold))
                     .tint(RoundPlayColors.accent)
+                    // Otherwise the button sits flush on the top row of the number pad.
+                    .padding(.bottom, 8)
             }
         }
         // Picking a game and naming a number is the moment real money enters the round.
@@ -234,10 +246,27 @@ private struct GameSelectionRow: View {
                                 .keyboardType(.decimalPad)
                                 .multilineTextAlignment(.trailing)
                                 .focused($focusedStake, equals: metadata.gameType)
-                                .frame(width: 56)
+                                .frame(width: 48)
                                 .onChange(of: stakeText) { _, newValue in
                                     stake = newValue.isEmpty ? 0 : (Decimal(string: newValue) ?? stake)
                                 }
+
+                            // A decimal pad has no way to select-all, so changing 20 to 5 meant
+                            // backspacing through it or fishing for the cursor. Clearing keeps
+                            // focus, so the next tap is already a digit.
+                            Button {
+                                stakeText = ""
+                                stake = 0
+                                focusedStake = metadata.gameType
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(.secondary)
+                                    .contentShape(Circle())
+                            }
+                            .buttonStyle(.plain)
+                            .opacity(stakeText.isEmpty ? 0 : 1)
+                            .disabled(stakeText.isEmpty)
                         }
                         .font(RoundPlayFont.plexMono(15, .semiBold))
                         .padding(.horizontal, 12)
