@@ -32,7 +32,7 @@ struct PlayerListView: View {
             }
             .onDelete(perform: delete)
         }
-        .navigationTitle("Players")
+        .navigationTitle("Roster")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button("Add", systemImage: "plus") { isAddingPlayer = true }
@@ -56,24 +56,36 @@ struct PlayerListView: View {
 struct PlayerRow: View {
     let player: PlayerRecord
 
+    private var initials: String {
+        let parts = player.name.split(separator: " ")
+        let letters = parts.prefix(2).compactMap(\.first)
+        return String(letters).uppercased()
+    }
+
     var body: some View {
-        HStack {
+        HStack(spacing: 12) {
+            Text(initials)
+                .font(RoundPlayFont.archivo(13, .bold))
+                .foregroundStyle(RoundPlayColors.accent)
+                .frame(width: 34, height: 34)
+                .background(Circle().fill(RoundPlayColors.fillSecondary))
+
             VStack(alignment: .leading, spacing: 2) {
-                Text(player.name)
+                RoundPlayTypography.headline(player.name)
                 if let handicap = player.handicapIndex {
                     Text("Handicap \(handicap, specifier: "%.1f")")
-                        .font(.caption)
+                        .font(RoundPlayFont.archivo(13))
                         .foregroundStyle(.secondary)
                 } else {
                     Text("No handicap")
-                        .font(.caption)
+                        .font(RoundPlayFont.archivo(13))
                         .foregroundStyle(.tertiary)
                 }
             }
             Spacer()
             if player.playCount > 0 {
                 Text("\(player.playCount) rounds")
-                    .font(.caption)
+                    .font(RoundPlayFont.archivo(13))
                     .foregroundStyle(.tertiary)
             }
         }

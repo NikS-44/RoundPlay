@@ -5,9 +5,9 @@ import Foundation
 private let a = UUID(uuidString: "70000000-0000-0000-0000-000000000001")!
 private let b = UUID(uuidString: "70000000-0000-0000-0000-000000000002")!
 
-@Test("Library exposes metadata for all six games")
+@Test("Library exposes metadata for all launch games")
 func libraryListsAllGames() {
-    #expect(GameLibrary.all.count == 6)
+    #expect(GameLibrary.all.count == 9)
     #expect(Set(GameLibrary.all.map(\.gameType)) == Set(GameType.allCases))
 }
 

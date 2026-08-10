@@ -8,10 +8,8 @@ struct HubSectionLabel: View {
     let title: String
 
     var body: some View {
-        Text(title)
-            .font(.footnote.weight(.semibold))
+        RoundPlayTypography.eyebrow(title)
             .foregroundStyle(.secondary)
-            .textCase(.uppercase)
             .listRowSeparator(.hidden)
             .listRowInsets(EdgeInsets(top: 20, leading: 16, bottom: 2, trailing: 16))
     }
@@ -24,8 +22,8 @@ struct HubRow: View {
     let icon: String
     let title: String
     let subtitle: String
-    /// Font weight for the title; defaults to `.medium`.
-    var titleWeight: Font.Weight = .medium
+    /// Font weight for the title; defaults to `.semibold`.
+    var titleWeight: RoundPlayFont.Weight = .semiBold
     /// When true, draws a trailing chevron. `NavigationLink` already draws its own, so this
     /// defaults to off; set true when wrapping in a plain `Button` that doesn't push a view.
     var showsChevron: Bool = false
@@ -38,9 +36,8 @@ struct HubRow: View {
                 .frame(width: 36, alignment: .center)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.body.weight(titleWeight))
-                Text(subtitle)
-                    .font(.caption)
+                    .font(RoundPlayFont.archivo(16, titleWeight))
+                RoundPlayTypography.caption(subtitle)
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
@@ -52,6 +49,51 @@ struct HubRow: View {
         }
         .padding(.vertical, 2)
         .contentShape(Rectangle())
+    }
+}
+
+// MARK: - Round builder step header
+
+/// "Step X of N" + a big question-style title, used at the top of every screen in the new-round
+/// flow so each step reads with the same weight instead of only the player-count step standing out.
+struct RoundBuilderStepHeader: View {
+    let step: Int
+    let totalSteps: Int
+    let title: String
+    var detail: String? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(detail.map { "Step \(step) of \(totalSteps) · \($0)" } ?? "Step \(step) of \(totalSteps)")
+                .font(RoundPlayFont.archivo(15, .bold))
+                .foregroundStyle(RoundPlayColors.accent)
+            RoundPlayTypography.largeTitle(title)
+        }
+        .listRowSeparator(.hidden)
+        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 14, trailing: 16))
+    }
+}
+
+/// The primary action for a round-builder step, pinned to the same spot at the bottom of every
+/// screen in the flow — never a nav-bar toolbar button, so "how do I move on" never changes shape.
+struct RoundBuilderContinueButton: View {
+    let title: String
+    var isEnabled: Bool = true
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(RoundPlayFont.archivo(17, .semiBold))
+                .frame(maxWidth: .infinity, minHeight: 50)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(RoundPlayColors.accent)
+        .disabled(!isEnabled)
+        .padding(.horizontal, 24)
+        .padding(.top, 12)
+        .padding(.bottom, 8)
+        .background(.bar)
     }
 }
 
@@ -73,7 +115,7 @@ struct ChipButton: View {
                         .font(.caption2)
                 }
                 Text(title)
-                    .font(.caption.weight(.medium))
+                    .font(RoundPlayFont.archivo(13, .medium))
             }
             .foregroundStyle(isSelected ? .white : .primary)
             .padding(.horizontal, 10)
@@ -111,7 +153,7 @@ struct SegmentedPill<Value: Hashable>: View {
                     }
                 } label: {
                     Text(label(option))
-                        .font(.subheadline.weight(.medium))
+                        .font(RoundPlayFont.archivo(15, .medium))
                         .foregroundStyle(selection == option ? .white : .primary)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 7)
@@ -125,29 +167,6 @@ struct SegmentedPill<Value: Hashable>: View {
             Spacer(minLength: 0)
         }
     }
-}
-
-// MARK: - Muted prominent button style
-
-/// App-wide replacement for `.borderedProminent`. Uses `accentColor.opacity(0.7)` to match
-/// the selected-chip pill style and avoid harsh contrast between white label and a saturated fill.
-struct MutedProminentButtonStyle: ButtonStyle {
-    @Environment(\.isEnabled) private var isEnabled
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .foregroundStyle(.white)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color.accentColor.opacity(isEnabled ? (configuration.isPressed ? 0.55 : 0.7) : 0.35))
-            )
-    }
-}
-
-extension ButtonStyle where Self == MutedProminentButtonStyle {
-    static var mutedProminent: MutedProminentButtonStyle { .init() }
 }
 
 // MARK: - Themed card background

@@ -62,6 +62,14 @@ public enum StablefordEngine: GameDescriptor {
     public static let gameType: GameType = .stableford
     public static let displayName = "Stableford"
     public static let summary = "Score points per hole instead of counting strokes. A bad hole costs you a point, not your round."
+    public static let rules = """
+    Instead of adding up every stroke, each hole earns you points based on your net score against par: the standard table pays 2 for par, 3 for birdie, 4 for eagle, 5 for albatross, and 1 for bogey — anything worse than bogey scores zero.
+
+    That floor is the whole point. A single disaster hole costs you one point, not the ten strokes it actually took, so one blowup can't sink your whole round the way it would in stroke play. Highest total points at the end wins.
+
+    Works for any group size from two up to eight, and pairs well with a per-point stake so the money tracks the same points everyone's already watching.
+    """
+    public static let iconName = "chart.bar.fill"
     public static let requiredInputs: Set<InputKind> = [.strokes]
     public static let playerRange = 2...8
 
@@ -70,7 +78,7 @@ public enum StablefordEngine: GameDescriptor {
         for seat in state.seats { points[seat.playerID] = 0 }
         var explanations: [HoleExplanation] = []
 
-        for hole in state.completedHoles(in: .total) {
+        for hole in state.completedHoles(in: state.segment) {
             guard let par = state.course.hole(hole)?.par else { continue }
             var line: [String] = []
 

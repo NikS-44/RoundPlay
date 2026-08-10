@@ -22,6 +22,14 @@ public enum SkinsEngine: GameDescriptor {
     public static let gameType: GameType = .skins
     public static let displayName = "Skins"
     public static let summary = "Every hole is worth a skin. Win the hole outright to take it — tie and it rolls over."
+    public static let rules = """
+    Every hole is worth one skin. Whoever posts the lowest net score on a hole wins that skin outright — the whole group pays them for it.
+
+    Tie the low score and nobody wins: the skin carries over and stacks onto the next hole. A carried skin can keep growing for several holes before someone finally wins it clean, which is what produces the big swings late in a round.
+
+    Any skins still unclaimed when the round ends are simply not paid — that money was never won by anyone. Groups that want to split the leftover do it in cash at the bar; RoundPlay won't invent a rule your group didn't agree to.
+    """
+    public static let iconName = "dollarsign.circle.fill"
     public static let requiredInputs: Set<InputKind> = [.strokes]
     public static let playerRange = 2...8
 
@@ -30,7 +38,7 @@ public enum SkinsEngine: GameDescriptor {
         var explanations: [HoleExplanation] = []
         var carried = 0
 
-        for hole in state.completedHoles(in: .total) {
+        for hole in state.completedHoles(in: state.segment) {
             let ranked = state.seatsRankedByNet(hole: hole)
             guard let best = ranked.first else { continue }
 

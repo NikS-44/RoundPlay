@@ -14,6 +14,7 @@ enum RoundPlaySchema {
         [
             PlayerRecord.self,
             CourseRecord.self,
+            FavoriteCourseRecord.self,
             RoundRecord.self,
             SeatRecord.self,
             GameInstanceRecord.self,

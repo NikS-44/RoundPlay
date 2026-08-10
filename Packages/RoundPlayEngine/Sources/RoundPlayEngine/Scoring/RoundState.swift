@@ -7,6 +7,7 @@ import Foundation
 public struct RoundState: Sendable {
     public let seats: [Seat]
     public let course: Course
+    public let segment: RoundSegment
 
     /// Highest-sequence stroke entry per (hole, player).
     private let strokesByHolePlayer: [HolePlayer: Int]
@@ -25,9 +26,10 @@ public struct RoundState: Sendable {
         let kind: HoleEventKind
     }
 
-    public init(log: [ScoreEvent], seats: [Seat], course: Course) {
+    public init(log: [ScoreEvent], seats: [Seat], course: Course, segment: RoundSegment = .total) {
         self.seats = seats
         self.course = course
+        self.segment = segment
 
         // Sorting ascending and letting later writes overwrite gives "highest sequence wins"
         // without a comparison in the loop. Ties on sequence are broken by event id so the
@@ -50,6 +52,10 @@ public struct RoundState: Sendable {
                 wolf[event.hole] = (wolf: event.playerID, declaration: declaration)
             case .holeEvent(let kind):
                 events[HoleEventKey(hole: event.hole, kind: kind)] = event.playerID
+            case .clearStrokes:
+                strokes.removeValue(forKey: HolePlayer(hole: event.hole, player: event.playerID))
+            case .clearHoleEvent(let kind):
+                events.removeValue(forKey: HoleEventKey(hole: event.hole, kind: kind))
             }
         }
 
@@ -85,7 +91,8 @@ public struct RoundState: Sendable {
     }
 
     public func holeEventWinner(hole: Int, kind: HoleEventKind) -> UUID? {
-        holeEvents[HoleEventKey(hole: hole, kind: kind)]
+        guard let winner = holeEvents[HoleEventKey(hole: hole, kind: kind)], seats.contains(where: { $0.playerID == winner }) else { return nil }
+        return winner
     }
 
     // MARK: - Completeness

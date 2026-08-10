@@ -5,6 +5,7 @@ import SwiftUI
 /// Thin wrapper over `SwiftUI.List` that centralizes the list-style and keyboard-dismiss settings
 /// used across every list screen in the app, so they cannot drift between screens.
 enum RoundPlayList {
+    @MainActor
     @ViewBuilder
     static func plain<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         SwiftUI.List {

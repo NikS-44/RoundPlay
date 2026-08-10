@@ -8,6 +8,10 @@ public enum ScoreEventPayload: Equatable, Sendable, Codable {
     case wolfDeclaration(WolfDeclaration)
     /// Bingo Bango Bongo point. The `playerID` on the event is who earned it.
     case holeEvent(HoleEventKind)
+    /// Removes the current gross score for this hole/player. The event remains in the audit log.
+    case clearStrokes
+    /// Removes the current winner for a hole-event kind. The event remains in the audit log.
+    case clearHoleEvent(HoleEventKind)
 }
 
 /// The Wolf's decision for a hole: take a partner, or play the field alone.

@@ -9,8 +9,12 @@ struct GameLibraryView: View {
     var body: some View {
         RoundPlayList.plain {
             ForEach(GameLibrary.all) { metadata in
-                GameCard(metadata: metadata)
-                    .roundPlayListRowSeparatorFullWidth()
+                NavigationLink {
+                    GameDetailView(metadata: metadata)
+                } label: {
+                    GameCard(metadata: metadata)
+                }
+                .roundPlayListRowSeparatorFullWidth()
             }
         }
         .navigationTitle("Games")
@@ -21,18 +25,22 @@ struct GameCard: View {
     let metadata: GameMetadata
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(metadata.displayName).font(.headline)
-                Spacer()
-                Text(metadata.playerCountLabel)
-                    .font(.caption)
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: metadata.iconName)
+                .font(.title2)
+                .foregroundStyle(RoundPlayColors.accent)
+                .frame(width: 28)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    RoundPlayTypography.headline(metadata.displayName)
+                    Spacer()
+                    RoundPlayTypography.eyebrow(metadata.playerCountLabel)
+                        .foregroundStyle(.secondary)
+                }
+                RoundPlayTypography.body(metadata.summary)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            Text(metadata.summary)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .combine)

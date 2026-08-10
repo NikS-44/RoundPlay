@@ -27,6 +27,10 @@ struct AuditLogView: View {
             "\(name(for: record.playerID)) partnered with \(name(for: partner))"
         case .holeEvent(let kind):
             "\(name(for: record.playerID)) took the \(kind.rawValue)"
+        case .clearStrokes:
+            "Cleared \(name(for: record.playerID))'s score"
+        case .clearHoleEvent(let kind):
+            "Cleared the \(kind.rawValue) award"
         case nil:
             "Unreadable entry"
         }
@@ -44,12 +48,20 @@ struct AuditLogView: View {
 
             ForEach(entries) { record in
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Hole \(record.hole) — \(describe(record))")
+                    RoundPlayTypography.headline("Hole \(record.hole) — \(describe(record))")
                     Text("Entered by \(record.enteredByName) · \(record.recordedAt, style: .time)")
-                        .font(.caption)
+                        .font(RoundPlayFont.archivo(13))
                         .foregroundStyle(.secondary)
                 }
                 .roundPlayListRowSeparatorFullWidth()
+            }
+
+            if !entries.isEmpty {
+                Section {
+                    RoundPlayTypography.eyebrow("Corrections append — nothing is overwritten, so a silent edit is impossible")
+                        .foregroundStyle(.secondary)
+                        .listRowSeparator(.hidden)
+                }
             }
         }
         .navigationTitle("History")

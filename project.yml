@@ -18,12 +18,39 @@ targets:
     dependencies:
       - package: RoundPlayEngine
         product: RoundPlayEngine
+    info:
+      path: RoundPlay/Info.plist
+      properties:
+        UIAppFonts:
+          - Archivo-Regular.ttf
+          - Archivo-Medium.ttf
+          - Archivo-SemiBold.ttf
+          - Archivo-Bold.ttf
+          - Archivo-Black.ttf
+          - IBMPlexMono-Regular.ttf
+          - IBMPlexMono-Medium.ttf
+          - IBMPlexMono-SemiBold.ttf
+        NSLocationWhenInUseUsageDescription: "Find golf courses near you."
+        ITSAppUsesNonExemptEncryption: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.roundplay.RoundPlay
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "6.2"
+        GENERATE_INFOPLIST_FILE: YES
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         ENABLE_USER_SCRIPT_SANDBOXING: YES
+  RoundPlayTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: RoundPlayTests
+    dependencies:
+      - target: RoundPlay
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.roundplay.RoundPlayTests
+        SWIFT_VERSION: "6.2"

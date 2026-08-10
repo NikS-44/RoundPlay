@@ -26,6 +26,14 @@ public enum NassauEngine: GameDescriptor {
     public static let gameType: GameType = .nassau
     public static let displayName = "Nassau"
     public static let summary = "Three bets in one round: front nine, back nine, and overall. Fall behind and you can press."
+    public static let rules = """
+    Nassau is three separate match-play bets in one round: who wins the front nine, who wins the back nine, and who wins the full eighteen. Each is worth the stake on its own, so a $10 Nassau has $30 riding on it before anything else happens.
+
+    The bet that makes Nassau interesting is the press: if you fall far enough behind on the holes remaining in a segment, you can open a brand-new bet on just those remaining holes — effectively doubling down to claw back. That's how a $10 Nassau routinely settles for $40 or more.
+
+    This is a two-player game — Phase 1 doesn't support the 2v2 best-ball team version, which needs its own partner assignment.
+    """
+    public static let iconName = "flag.checkered.2.crossed"
     public static let requiredInputs: Set<InputKind> = [.strokes]
     public static let playerRange = 2...2
 
@@ -45,12 +53,13 @@ public enum NassauEngine: GameDescriptor {
         guard state.seats.count == 2 else { throw SettleError.requiresTwoPlayers }
         let first = state.seats[0], second = state.seats[1]
 
-        var bets: [Bet] = RoundSegment.allCases.map {
+        let segments: [RoundSegment] = state.segment == .total ? RoundSegment.allCases : [state.segment]
+        var bets: [Bet] = segments.map {
             Bet(segment: $0, startHole: $0 == .back ? 10 : 1, isPress: false)
         }
         var explanations: [HoleExplanation] = []
 
-        for hole in state.completedHoles(in: .total) {
+        for hole in state.completedHoles(in: state.segment) {
             guard let firstNet = state.net(hole: hole, player: first.playerID),
                   let secondNet = state.net(hole: hole, player: second.playerID) else { continue }
 

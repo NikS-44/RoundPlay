@@ -2,6 +2,9 @@ import Foundation
 
 /// A game plus the settings the group agreed on.
 public enum GameConfiguration: Equatable, Sendable, Codable {
+    case strokePlay(StrokePlayConfig)
+    case matchPlay(MatchPlayConfig)
+    case bestBall(BestBallConfig)
     case skins(SkinsConfig)
     case nassau(NassauConfig)
     case stableford(StablefordConfig)
@@ -11,12 +14,31 @@ public enum GameConfiguration: Equatable, Sendable, Codable {
 
     public var gameType: GameType {
         switch self {
+        case .strokePlay: .strokePlay
+        case .matchPlay: .matchPlay
+        case .bestBall: .bestBall
         case .skins: .skins
         case .nassau: .nassau
         case .stableford: .stableford
         case .nines: .nines
         case .wolf: .wolf
         case .bingoBangoBongo: .bingoBangoBongo
+        }
+    }
+
+    /// Every game's config carries a unit stake — surfaced here so the UI can read or re-seed it
+    /// without switching on the game type itself.
+    public var unitStake: Decimal {
+        switch self {
+        case .strokePlay: 0
+        case .matchPlay(let config): config.unitStake
+        case .bestBall(let config): config.unitStake
+        case .skins(let config): config.unitStake
+        case .nassau(let config): config.unitStake
+        case .stableford(let config): config.unitStake
+        case .nines(let config): config.unitStake
+        case .wolf(let config): config.unitStake
+        case .bingoBangoBongo(let config): config.unitStake
         }
     }
 }
@@ -26,6 +48,8 @@ public struct GameMetadata: Equatable, Sendable, Identifiable {
     public let gameType: GameType
     public let displayName: String
     public let summary: String
+    public let rules: String
+    public let iconName: String
     public let requiredInputs: Set<InputKind>
     public let playerRange: ClosedRange<Int>
 
@@ -55,6 +79,9 @@ public enum GameLibrary {
 
     public static func metadata(for gameType: GameType) -> GameMetadata {
         switch gameType {
+        case .strokePlay: describe(StrokePlayEngine.self)
+        case .matchPlay: describe(MatchPlayEngine.self)
+        case .bestBall: describe(BestBallEngine.self)
         case .skins: describe(SkinsEngine.self)
         case .nassau: describe(NassauEngine.self)
         case .stableford: describe(StablefordEngine.self)
@@ -77,6 +104,9 @@ public enum GameLibrary {
         }
 
         switch configuration {
+        case .strokePlay(let config): return StrokePlayEngine.settle(state: state, config: config)
+        case .matchPlay(let config): return try MatchPlayEngine.settle(state: state, config: config)
+        case .bestBall(let config): return try BestBallEngine.settle(state: state, config: config)
         case .skins(let config):
             return SkinsEngine.settle(state: state, config: config)
         case .nassau(let config):
@@ -97,6 +127,8 @@ public enum GameLibrary {
             gameType: E.gameType,
             displayName: E.displayName,
             summary: E.summary,
+            rules: E.rules,
+            iconName: E.iconName,
             requiredInputs: E.requiredInputs,
             playerRange: E.playerRange
         )

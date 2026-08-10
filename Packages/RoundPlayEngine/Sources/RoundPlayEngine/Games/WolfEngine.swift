@@ -58,6 +58,14 @@ public enum WolfEngine: GameDescriptor {
     public static let gameType: GameType = .wolf
     public static let displayName = "Wolf"
     public static let summary = "Take turns being the Wolf. Pick a partner off the tee, or take on all three alone for quadruple points."
+    public static let rules = """
+    Each hole has a Wolf, rotating through the group in tee order. After watching everyone else's tee shot, the Wolf either picks a partner for that hole — the two of you play your better ball against the other two's better ball — or goes it alone as a Lone Wolf against the whole field.
+
+    A partnered win splits the points between the Wolf and their partner; a field win against them splits points among the other three. Go Lone Wolf and win, and you take quadruple points solo — but lose, and each opponent scores against you too. It's the highest-risk, highest-reward call in the round.
+
+    Needs three, four, or five players. With four, the rotation doesn't divide evenly into 18 holes, so seats one and two simply get a fifth turn as Wolf.
+    """
+    public static let iconName = "pawprint.fill"
     public static let requiredInputs: Set<InputKind> = [.strokes, .partnerChoice]
     public static let playerRange = 3...5
 
@@ -71,7 +79,7 @@ public enum WolfEngine: GameDescriptor {
         for seat in state.seats { points[seat.playerID] = 0 }
         var explanations: [HoleExplanation] = []
 
-        for hole in state.completedHoles(in: .total) {
+        for hole in state.completedHoles(in: state.segment) {
             if config.tailHoleRule == .stopAfter16 && hole > 16 { continue }
             guard let declared = state.wolfDeclaration(hole: hole) else { continue }
 

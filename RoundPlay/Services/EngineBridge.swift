@@ -10,13 +10,15 @@ enum EngineBridge {
 
     enum BridgeError: Error {
         case courseUnavailable
+        case invalidEvent
     }
 
     static func roundState(for round: RoundRecord, course: Course) -> RoundState {
         RoundState(
             log: (round.events ?? []).compactMap(\.engineEvent),
             seats: round.orderedSeats.map(\.engineSeat),
-            course: course
+            course: course,
+            segment: round.holeSegment
         )
     }
 
@@ -62,6 +64,22 @@ enum EngineBridge {
         enteredBy: UUID, enteredByName: String, in context: ModelContext
     ) throws {
         try append(payload: .strokes(strokes), hole: hole, playerID: playerID,
+                   to: round, enteredBy: enteredBy, enteredByName: enteredByName, in: context)
+    }
+
+    static func clearStrokes(
+        hole: Int, playerID: UUID, to round: RoundRecord,
+        enteredBy: UUID, enteredByName: String, in context: ModelContext
+    ) throws {
+        try append(payload: .clearStrokes, hole: hole, playerID: playerID,
+                   to: round, enteredBy: enteredBy, enteredByName: enteredByName, in: context)
+    }
+
+    static func clearHoleEvent(
+        _ kind: HoleEventKind, hole: Int, to round: RoundRecord,
+        enteredBy: UUID, enteredByName: String, in context: ModelContext
+    ) throws {
+        try append(payload: .clearHoleEvent(kind), hole: hole, playerID: enteredBy,
                    to: round, enteredBy: enteredBy, enteredByName: enteredByName, in: context)
     }
 

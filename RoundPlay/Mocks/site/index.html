@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RoundPlay · Golf betting games, scored on the course</title>
+<meta name="description" content="RoundPlay keeps score for the games your group actually plays (Skins, Nassau, Stableford, Nines, Wolf, Bingo Bango Bongo) and applies everyone's handicap, and tells you who owes what.">
+<link rel="canonical" href="https://roundplay.app/">
+<meta name="theme-color" content="#0E1512">
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://roundplay.app/">
+<meta property="og:site_name" content="RoundPlay">
+<meta property="og:title" content="RoundPlay: settle the bet before you leave the 18th">
+<meta property="og:description" content="Golf betting games, scored on the course. Six games, handicaps applied, every dollar explained.">
+<meta property="og:image" content="https://roundplay.app/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="RoundPlay: settle the bet before you leave the 18th">
+<meta name="twitter:description" content="Golf betting games, scored on the course. Six games, handicaps applied, every dollar explained.">
+<meta name="twitter:image" content="https://roundplay.app/og.png">
+
+<link rel="icon" href="/favicon-32.png" sizes="32x32">
+<link rel="icon" href="/favicon-16.png" sizes="16x16">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --board:#0E1512; --fairway:#1B7349; --grass:#2E9E68; --grass-lt:#4FBD87;
+    --chalk:#F5F3EE; --pin:#E0A32E; --up:#17853F; --down:#BF3329;
+    --ink-60:rgba(14,21,18,.6); --ink-45:rgba(14,21,18,.45); --ink-35:rgba(14,21,18,.35);
+    --paper-65:rgba(245,243,238,.65); --paper-45:rgba(245,243,238,.45);
+    --pad:40px;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--chalk);color:var(--board);
+    font-family:Archivo,system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+  img,svg{display:block;max-width:100%}
+  a{color:var(--fairway);text-decoration:none}
+  a:hover{color:var(--board)}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 var(--pad)}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+  .eyebrow{font:500 11px/1 "IBM Plex Mono",monospace;letter-spacing:.18em}
+  h1,h2,h3{margin:0;font-weight:800;font-stretch:118%;letter-spacing:-.035em;line-height:1.02;text-wrap:balance}
+  p{margin:0;text-wrap:pretty}
+
+  /* ---- header ---- */
+  .top{background:var(--board);color:var(--chalk)}
+  .nav{display:flex;align-items:center;justify-content:space-between;padding:24px 0;gap:20px}
+  .brand{display:flex;align-items:center;gap:11px}
+  .brand span{font-size:20px;font-weight:800;font-stretch:118%;letter-spacing:-.015em}
+  .navlinks{display:flex;align-items:center;gap:28px}
+  .navlinks a{font:500 14.5px/1 Archivo,sans-serif;color:var(--paper-65)}
+  .navlinks a:hover{color:var(--chalk)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;height:40px;padding:0 18px;
+    border-radius:10px;background:var(--fairway);color:#fff;font:700 14.5px/1 Archivo,sans-serif}
+  .btn:hover{background:var(--grass);color:#fff}
+
+  /* ---- hero ---- */
+  .hero{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center;padding:52px 0 64px}
+  .hero h1{font-size:clamp(40px,6.2vw,72px);letter-spacing:-.04em;line-height:.96}
+  .hero .lede{font:400 19px/1.55 Archivo,sans-serif;color:var(--paper-65);max-width:470px;margin-top:22px}
+  .cta{display:flex;flex-wrap:wrap;gap:14px 20px;align-items:center;margin-top:32px}
+  .appstore{display:inline-flex;align-items:center;gap:11px;height:54px;padding:0 22px;border-radius:12px;
+    background:var(--chalk);color:var(--board)}
+  .appstore:hover{background:#fff;color:var(--board)}
+  .appstore svg{flex:none}
+  .appstore .lines{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+  .appstore .sm{display:block;font:500 9.5px/1 Archivo,sans-serif;letter-spacing:.01em;color:var(--ink-60)}
+  .appstore .lg{display:block;font:700 18px/1 Archivo,sans-serif;letter-spacing:-.015em}
+  .joinnote{display:flex;flex-direction:column;gap:3px}
+  .joinnote b{font:600 14px/1.3 Archivo,sans-serif;color:rgba(245,243,238,.9)}
+  .joinnote span{font:400 13.5px/1.4 Archivo,sans-serif;color:var(--paper-45)}
+
+  /* phone mock */
+  .shot{position:relative;display:flex;justify-content:center}
+  .halo{position:absolute;width:min(420px,100%);aspect-ratio:1;border-radius:50%;
+    border:44px solid rgba(46,158,104,.11);top:16px;pointer-events:none}
+  .phone{position:relative;width:300px;max-width:100%;background:var(--chalk);border-radius:38px;
+    border:8px solid #000;box-shadow:0 24px 60px rgba(0,0,0,.5);overflow:hidden;padding-bottom:14px;
+    color:var(--board)}
+  .phead{background:var(--board);padding:14px 18px}
+  .prow{display:flex;align-items:center;justify-content:space-between}
+  .plabel{font:500 9.5px/1 "IBM Plex Mono",monospace;letter-spacing:.14em;color:rgba(245,243,238,.55)}
+  .live{display:flex;align-items:center;gap:5px;font:500 9px/1 "IBM Plex Mono",monospace;
+    letter-spacing:.1em;color:var(--paper-65)}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--grass-lt)}
+  .holeno{display:flex;align-items:flex-end;justify-content:space-between;margin-top:9px}
+  .holeno .n{font-size:50px;font-weight:800;font-stretch:118%;letter-spacing:-.05em;color:var(--chalk);line-height:.85}
+  .holeno .k{font-size:12px;font-weight:600;color:rgba(245,243,238,.5)}
+  .chip{background:rgba(245,243,238,.1);border-radius:7px;padding:6px 10px;text-align:center}
+  .chip i{display:block;font:500 8px/1 "IBM Plex Mono",monospace;letter-spacing:.12em;color:rgba(245,243,238,.5);font-style:normal}
+  .chip b{display:block;font:700 16px/1 Archivo,sans-serif;color:var(--chalk);margin-top:3px}
+  .pbody{padding:12px;display:flex;flex-direction:column;gap:9px}
+  .pcard{background:#fff;border-radius:11px;border:1px solid rgba(14,21,18,.07);padding:10px 11px}
+  .pcard>b{display:block;font:700 13.5px/1 Archivo,sans-serif;margin-bottom:8px}
+  .strip{display:flex;gap:5px}
+  .strip span{flex:1;height:40px;border-radius:9px;background:rgba(14,21,18,.06);
+    display:flex;align-items:center;justify-content:center;
+    font:600 16px/1 "IBM Plex Mono",monospace}
+  .strip span.on{background:var(--fairway);color:#fff}
+
+  /* ---- steps ---- */
+  section{padding-top:84px}
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:34px}
+  .step{border-top:2px solid var(--board);padding-top:18px}
+  .step .eyebrow{color:var(--fairway);display:block;margin-bottom:14px}
+  .step h3{font-size:26px;font-stretch:112%;letter-spacing:-.028em;line-height:1.12;margin-bottom:9px}
+  .step p{font:400 15px/1.6 Archivo,sans-serif;color:var(--ink-60)}
+  .step code{font-family:"IBM Plex Mono",monospace;font-size:13.5px;color:var(--board)}
+
+  /* ---- money ---- */
+  .money{background:var(--board);border-radius:22px;padding:56px;display:grid;
+    grid-template-columns:1fr 1fr;gap:52px;align-items:center}
+  .money .eyebrow{color:var(--pin);display:block;margin-bottom:20px}
+  .money h2{font-size:clamp(30px,3.6vw,42px);color:var(--chalk);line-height:1.05}
+  .money .lede{font:400 17px/1.6 Archivo,sans-serif;color:rgba(245,243,238,.62);margin-top:18px;max-width:420px}
+  .money .fine{font:400 14px/1.5 Archivo,sans-serif;color:var(--paper-45);max-width:400px;
+    margin-top:26px;padding-top:20px;border-top:1px solid rgba(245,243,238,.14)}
+  .board{background:var(--chalk);border-radius:14px;overflow:hidden}
+  .board .bh{background:rgba(14,21,18,.06);padding:12px 18px;display:flex;justify-content:space-between;gap:10px}
+  .board .bh span{font:500 10px/1 "IBM Plex Mono",monospace;letter-spacing:.14em;color:var(--ink-45)}
+  .board .br{padding:14px 18px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(14,21,18,.08)}
+  .board .br:last-of-type{border-bottom:0}
+  .board .br b{flex:1;font:700 17px/1 Archivo,sans-serif}
+  .board .br i{font:400 12.5px/1 Archivo,sans-serif;color:var(--ink-45);font-style:normal}
+  .board .br em{font:600 17px/1 "IBM Plex Mono",monospace;min-width:70px;text-align:right;font-style:normal}
+  .pos{color:var(--up)}.neg{color:var(--down)}
+  .why{background:rgba(14,21,18,.04);padding:14px 18px;display:flex;flex-direction:column;gap:6px}
+  .why p{font:400 13px/1.45 Archivo,sans-serif;color:rgba(14,21,18,.62)}
+
+  /* ---- games ---- */
+  .games h2{font-size:clamp(30px,4vw,38px);margin-bottom:8px}
+  .games .lede{font:400 16px/1.6 Archivo,sans-serif;color:rgba(14,21,18,.55);max-width:520px;margin-bottom:34px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .game{background:#fff;border:1px solid rgba(14,21,18,.09);border-radius:14px;padding:22px}
+  .game .gh{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:7px}
+  .game h3{font-size:21px;font-stretch:112%;letter-spacing:-.02em;line-height:1}
+  .game .cnt{font:500 10.5px/1 "IBM Plex Mono",monospace;letter-spacing:.1em;color:var(--fairway);white-space:nowrap}
+  .game p{font:400 14.5px/1.55 Archivo,sans-serif;color:rgba(14,21,18,.58)}
+  .game.dark{background:var(--board);border-color:var(--board)}
+  .game.dark h3{color:var(--chalk)}
+  .game.dark .cnt{color:var(--pin)}
+  .game.dark p{color:rgba(245,243,238,.62)}
+
+  /* ---- close ---- */
+  .close{border-top:2px solid var(--board);padding-top:40px;display:flex;align-items:flex-end;
+    justify-content:space-between;gap:40px;flex-wrap:wrap}
+  .close h2{font-size:clamp(30px,4.4vw,44px);letter-spacing:-.038em;max-width:560px}
+  .close p{font:400 16px/1.6 Archivo,sans-serif;color:rgba(14,21,18,.55);margin-top:14px;max-width:440px}
+  .appstore.dark{background:var(--board);color:var(--chalk);height:56px;padding:0 24px}
+  .appstore.dark:hover{background:#000;color:var(--chalk)}
+  .appstore.dark .sm{color:var(--paper-65)}
+  .appstore.dark .lg{font-size:19px}
+
+  footer{margin-top:64px;padding-bottom:34px}
+  .foot{border-top:1px solid rgba(14,21,18,.12);padding-top:24px;display:flex;align-items:center;
+    justify-content:space-between;flex-wrap:wrap;gap:16px}
+  .foot .brand span{color:var(--board);font-size:16px}
+  .foot nav{display:flex;gap:26px}
+  .foot nav a{font:400 13.5px/1 Archivo,sans-serif;color:rgba(14,21,18,.5)}
+  .foot .url{font:400 12px/1 "IBM Plex Mono",monospace;color:var(--ink-35)}
+
+  @media (max-width:900px){
+    :root{--pad:24px}
+    .hero{grid-template-columns:1fr;gap:44px;padding:36px 0 52px}
+    .hero .lede{max-width:none}
+    .steps{grid-template-columns:1fr;gap:28px}
+    .money{grid-template-columns:1fr;gap:34px;padding:34px 26px;border-radius:18px}
+    .grid{grid-template-columns:1fr 1fr}
+    section{padding-top:60px}
+  }
+  @media (max-width:620px){
+    .navlinks a:not(.btn){display:none}
+    .grid{grid-template-columns:1fr}
+    .close{align-items:flex-start}
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="nav">
+      <a class="brand" href="/" aria-label="RoundPlay home">
+        <svg viewBox="0 0 100 100" width="30" height="30" aria-hidden="true"><ellipse cx="50" cy="70" rx="37" ry="16" fill="#4FBD87"/><ellipse cx="50" cy="70" rx="13" ry="5.5" fill="#0E1512"/><circle cx="50" cy="55" r="13" fill="#F5F3EE"/></svg>
+        <span>RoundPlay</span>
+      </a>
+      <nav class="navlinks">
+        <a href="#games">Games</a>
+        <a href="#how">How it works</a>
+        <a href="#money">Money</a>
+        <a class="btn" href="#get">Get the app</a>
+      </nav>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="hero">
+      <div>
+        <span class="eyebrow" style="color:var(--pin)">SKINS · NASSAU · STABLEFORD · NINES · WOLF · BINGO BANGO BONGO</span>
+        <h1 style="margin-top:22px">Settle the bet before you leave the 18th.</h1>
+        <p class="lede">RoundPlay keeps score for the games your group actually plays, applies everyone's handicap, and tells you who owes what, with a sentence explaining every dollar.</p>
+        <div class="cta">
+          <a class="appstore" href="#get">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.3 12.5c0-2.4 2-3.6 2.1-3.6-1.1-1.7-2.9-1.9-3.6-1.9-1.5-.2-3 .9-3.7.9-.8 0-2-.9-3.2-.9-1.7 0-3.2 1-4 2.5-1.7 3-.4 7.4 1.2 9.8.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.1-.8s1.9.8 3.2.7c1.3 0 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8-.1 0-2.4-.9-2.4-3.9zM14 5.4c.7-.8 1.1-1.9 1-3-1 0-2.2.7-2.9 1.5-.6.7-1.1 1.9-1 3 1.1.1 2.2-.6 2.9-1.5z"/></svg>
+            <span class="lines"><span class="sm">Download on the</span><span class="lg">App Store</span></span>
+          </a>
+          <div class="joinnote"><b>Or just join a round</b><span>Scan your group's code, no app needed.</span></div>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="halo" aria-hidden="true"></div>
+        <div class="phone" role="img" aria-label="The RoundPlay hole screen: hole 7, par 4, with a score strip for each player.">
+          <div class="phead">
+            <div class="prow"><span class="plabel">TORREY PINES SOUTH</span><span class="live"><i class="dot"></i>LIVE</span></div>
+            <div class="holeno">
+              <div style="display:flex;align-items:baseline;gap:8px"><span class="k">HOLE</span><span class="n">7</span></div>
+              <div style="display:flex;gap:6px">
+                <div class="chip"><i>PAR</i><b>4</b></div>
+                <div class="chip"><i>SI</i><b>3</b></div>
+              </div>
+            </div>
+          </div>
+          <div class="pbody">
+            <div class="pcard"><b>Ann</b><div class="strip"><span>3</span><span class="on">4</span><span>5</span><span>6</span><span>7</span></div></div>
+            <div class="pcard"><b>Ben</b><div class="strip"><span class="on">3</span><span>4</span><span>5</span><span>6</span><span>7</span></div></div>
+            <div class="pcard"><b>Cal</b><div class="strip"><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section id="how" class="wrap">
+    <div class="steps">
+      <article class="step">
+        <span class="eyebrow">01 · START</span>
+        <h3>Course, players, games.</h3>
+        <p>Your regular group is sorted to the top of the roster, one tap each. Pick as many games as you want to run at once and set the stake per game.</p>
+      </article>
+      <article class="step">
+        <span class="eyebrow">02 · SHARE</span>
+        <h3>Three words, said out loud.</h3>
+        <p>Point a camera at the code, or just say <code>otter-maple-jump</code> across the cart. No account, no password, no email. Tap your name and you're in.</p>
+      </article>
+      <article class="step">
+        <span class="eyebrow">03 · SCORE</span>
+        <h3>One screen per hole.</h3>
+        <p>A number strip centred on the hole's par, with five thumb-sized targets that cover almost every real score. It works in a dead zone and reconciles when you're back.</p>
+      </article>
+    </div>
+  </section>
+
+  <section id="money" class="wrap">
+    <div class="money">
+      <div>
+        <span class="eyebrow">EVERY DOLLAR, EXPLAINED</span>
+        <h2>The scoring argument ends on the 19th hole.</h2>
+        <p class="lede">Every entry is attributed and nothing is ever overwritten. A correction shows up as its own line. If someone changed your 6 to a 5 on 14, you can see who and when.</p>
+        <p class="fine">RoundPlay never holds, moves, or takes a cut of money. It keeps the tally; you settle it however you already do.</p>
+      </div>
+      <div class="board">
+        <div class="bh"><span>SKINS</span><span>$5 UNIT · THRU 18</span></div>
+        <div class="br"><b>Ann</b><i>6 pts</i><em class="pos">+$25.00</em></div>
+        <div class="br"><b>Dee</b><i>3 pts</i><em class="pos">+$5.00</em></div>
+        <div class="br"><b>Ben</b><i>1 pt</i><em class="neg">−$15.00</em></div>
+        <div class="br"><b>Cal</b><i>0 pts</i><em class="neg">−$15.00</em></div>
+        <div class="why">
+          <p>Hole 7: Ann wins 2 skins ($20), carryover from 6.</p>
+          <p>Hole 6: halved, pot carries.</p>
+          <p>Hole 5: Dee wins 1 skin ($5).</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="games" class="wrap games">
+    <h2>Six games at launch</h2>
+    <p class="lede">Run several at once. Skins plus a Nassau is the normal case. Every group size from two to eight is covered.</p>
+    <div class="grid">
+      <article class="game"><div class="gh"><h3>Skins</h3><span class="cnt">2–8</span></div><p>Every hole is worth a skin. Win the hole outright to take it. Tie and it rolls over.</p></article>
+      <article class="game"><div class="gh"><h3>Nassau</h3><span class="cnt">2 OR 4</span></div><p>Three bets in one round: front nine, back nine, and overall. Fall behind and you can press.</p></article>
+      <article class="game"><div class="gh"><h3>Stableford</h3><span class="cnt">2–8</span></div><p>Score points per hole instead of counting strokes. A bad hole costs you a point, not your round.</p></article>
+      <article class="game"><div class="gh"><h3>Nines</h3><span class="cnt">3 ONLY</span></div><p>Nine points a hole for a threesome: 5 for low, 3 for middle, 1 for high.</p></article>
+      <article class="game dark"><div class="gh"><h3>Wolf</h3><span class="cnt">3–5</span></div><p>Take turns being the Wolf. Pick a partner off the tee, or take on all three alone for quadruple points.</p></article>
+      <article class="game"><div class="gh"><h3>Bingo Bango Bongo</h3><span class="cnt">2–4</span></div><p>Three points a hole: first on the green, closest to the pin, first in the hole. Handicap doesn't matter.</p></article>
+    </div>
+  </section>
+
+  <section id="get" class="wrap">
+    <div class="close">
+      <div>
+        <h2>Handicaps applied, carryovers tracked, nobody keeping it on a napkin.</h2>
+        <p>Free while we're in beta. iPhone now; the web join page works on anything.</p>
+      </div>
+      <a class="appstore dark" href="#get">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.3 12.5c0-2.4 2-3.6 2.1-3.6-1.1-1.7-2.9-1.9-3.6-1.9-1.5-.2-3 .9-3.7.9-.8 0-2-.9-3.2-.9-1.7 0-3.2 1-4 2.5-1.7 3-.4 7.4 1.2 9.8.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.1-.8s1.9.8 3.2.7c1.3 0 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8-.1 0-2.4-.9-2.4-3.9zM14 5.4c.7-.8 1.1-1.9 1-3-1 0-2.2.7-2.9 1.5-.6.7-1.1 1.9-1 3 1.1.1 2.2-.6 2.9-1.5z"/></svg>
+        <span class="lines"><span class="sm">Download on the</span><span class="lg">App Store</span></span>
+      </a>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap">
+  <div class="foot">
+    <a class="brand" href="/" aria-label="RoundPlay home">
+      <svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><ellipse cx="50" cy="70" rx="37" ry="16" fill="#1B7349"/><ellipse cx="50" cy="70" rx="13" ry="5.5" fill="#F5F3EE"/><circle cx="50" cy="55" r="13" fill="#0E1512"/></svg>
+      <span>RoundPlay</span>
+    </a>
+    <nav><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/support">Support</a></nav>
+    <span class="url">roundplay.app</span>
+  </div>
+</footer>
+
+</body>
+</html>

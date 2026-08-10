@@ -6,8 +6,33 @@ struct CourseEntryView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
-    @State private var model = CourseEntryModel()
+    @State private var model: CourseEntryModel
+    /// Set when this course was pre-filled from the OpenGolf catalog, so `save()` can record
+    /// where it came from.
+    private let openGolfID: String?
+    /// Set when editing a course already in the store — `save()` updates it in place (and every
+    /// other round at this course sees the fix) instead of creating a duplicate.
+    private let existingRecord: CourseRecord?
     let onSave: (CourseRecord) -> Void
+
+    init(model: CourseEntryModel = CourseEntryModel(), openGolfID: String? = nil, onSave: @escaping (CourseRecord) -> Void) {
+        _model = State(initialValue: model)
+        self.openGolfID = openGolfID
+        self.existingRecord = nil
+        self.onSave = onSave
+    }
+
+    /// Editing mode: pre-fills from `record` and updates it in place on save.
+    init(editing record: CourseRecord, onSave: @escaping (CourseRecord) -> Void) {
+        let model = CourseEntryModel()
+        model.name = record.name
+        model.pars = record.pars
+        model.strokeIndexes = record.strokeIndexes
+        _model = State(initialValue: model)
+        self.openGolfID = record.openGolfID
+        self.existingRecord = record
+        self.onSave = onSave
+    }
 
     var body: some View {
         Form {
@@ -15,10 +40,18 @@ struct CourseEntryView: View {
                 TextField("Course name", text: $model.name)
                     .textInputAutocapitalization(.words)
             } footer: {
-                Text("Total par \(model.totalPar)")
+                RoundPlayTypography.eyebrow("Total par \(model.totalPar)")
+                    .foregroundStyle(.secondary)
             }
 
-            Section("Holes") {
+            if openGolfID != nil {
+                Section {
+                    Label("Verify this scorecard against the course's physical card before playing. Missing catalog values are only placeholders.", systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(RoundPlayColors.destructive)
+                }
+            }
+
+            Section {
                 ForEach(0..<18, id: \.self) { index in
                     HoleEntryRow(
                         holeNumber: index + 1,
@@ -26,6 +59,9 @@ struct CourseEntryView: View {
                         strokeIndex: $model.strokeIndexes[index]
                     )
                 }
+            } header: {
+                RoundPlayTypography.eyebrow("Holes")
+                    .foregroundStyle(.secondary)
             }
 
             if let message = model.validationMessage {
@@ -34,7 +70,7 @@ struct CourseEntryView: View {
                 }
             }
         }
-        .navigationTitle("Add Course")
+        .navigationTitle(existingRecord == nil ? "Add Course" : "Edit Course")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
@@ -47,12 +83,17 @@ struct CourseEntryView: View {
     }
 
     private func save() {
-        let record = CourseRecord(
-            name: model.name.trimmingCharacters(in: .whitespaces),
-            pars: model.pars,
-            strokeIndexes: model.strokeIndexes
-        )
-        modelContext.insert(record)
+        let name = model.name.trimmingCharacters(in: .whitespaces)
+        let record: CourseRecord
+        if let existingRecord {
+            existingRecord.name = name
+            existingRecord.pars = model.pars
+            existingRecord.strokeIndexes = model.strokeIndexes
+            record = existingRecord
+        } else {
+            record = CourseRecord(name: name, pars: model.pars, strokeIndexes: model.strokeIndexes, openGolfID: openGolfID)
+            modelContext.insert(record)
+        }
         try? modelContext.save()
         onSave(record)
         dismiss()
@@ -67,8 +108,7 @@ private struct HoleEntryRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Text("\(holeNumber)")
-                .font(.headline.monospacedDigit())
+            RoundPlayTypography.numeral("\(holeNumber)", size: 17)
                 .frame(width: 28, alignment: .leading)
 
             Picker("Par", selection: $par) {

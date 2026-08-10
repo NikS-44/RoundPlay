@@ -18,21 +18,92 @@ struct RoundDashboardView: View {
         round.orderedSeats.first { $0.playerID == playerID }?.name ?? "Unknown"
     }
 
+    private struct PlainScoreLine: Identifiable {
+        let seat: SeatRecord
+        let holesPlayed: Int
+        let gross: Int
+        let net: Int
+        let netRelativeToPar: Int
+        var id: UUID { seat.id }
+    }
+
+    /// Plain stroke play, computed straight from the event log — used when no game is running,
+    /// so a round with no side bets is still a normal scorecard, not a blank Standings tab.
+    private var plainScoreLines: [PlainScoreLine] {
+        let state = EngineBridge.roundState(for: round, course: course)
+        let holes = round.holeSegment.holeRange
+        return round.orderedSeats.map { seat in
+            let played = holes.filter { state.gross(hole: $0, player: seat.playerID) != nil }
+            let gross = played.reduce(0) { $0 + (state.gross(hole: $1, player: seat.playerID) ?? 0) }
+            let net = played.reduce(0) { $0 + (state.net(hole: $1, player: seat.playerID) ?? 0) }
+            let par = played.reduce(0) { $0 + (course.hole($1)?.par ?? 0) }
+            return PlainScoreLine(seat: seat, holesPlayed: played.count, gross: gross, net: net, netRelativeToPar: net - par)
+        }
+        .sorted { $0.net < $1.net }
+    }
+
+    private func relativeToParLabel(_ value: Int) -> String {
+        if value == 0 { return "E" }
+        return value > 0 ? "+\(value)" : "\(value)"
+    }
+
     var body: some View {
         RoundPlayList.plain {
+            if settlements.isEmpty {
+                Section {
+                    ForEach(Array(plainScoreLines.enumerated()), id: \.element.id) { index, line in
+                        HStack(spacing: 12) {
+                            RoundPlayTypography.numeral("\(index + 1)", size: 15)
+                                .foregroundStyle(.secondary)
+                                .frame(width: 18, alignment: .leading)
+                            RoundPlayTypography.headline(line.seat.name)
+                            Spacer()
+                            if line.holesPlayed > 0 {
+                                Text("Gross \(line.gross)")
+                                    .font(RoundPlayFont.archivo(12))
+                                    .foregroundStyle(.secondary)
+                                RoundPlayTypography.money(relativeToParLabel(line.netRelativeToPar), size: 15)
+                                    .foregroundStyle(
+                                        line.netRelativeToPar < 0 ? RoundPlayColors.scoreUnderPar
+                                            : line.netRelativeToPar > 0 ? RoundPlayColors.scoreOverPar
+                                            : RoundPlayColors.scoreAtPar
+                                    )
+                                    .frame(minWidth: 40, alignment: .trailing)
+                            } else {
+                                Text("No scores yet")
+                                    .font(RoundPlayFont.archivo(12))
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                        .roundPlayListRowSeparatorFullWidth()
+                    }
+                } header: {
+                    RoundPlayTypography.eyebrow("Scoring")
+                        .foregroundStyle(.secondary)
+                } footer: {
+                    RoundPlayTypography.caption("No games running — plain stroke play, net score vs. par.")
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             ForEach(settlements, id: \.gameType) { settlement in
                 Section {
-                    ForEach(settlement.standings.sorted { $0.money > $1.money }) { standing in
-                        HStack {
-                            Text(name(for: standing.playerID))
-                            Spacer()
-                            Text("\(standing.points) pts")
-                                .font(.caption)
+                    ForEach(Array(sortedStandings(for: settlement).enumerated()), id: \.element.id) { index, standing in
+                        HStack(spacing: 12) {
+                            RoundPlayTypography.numeral("\(index + 1)", size: 15)
                                 .foregroundStyle(.secondary)
-                            Text(standing.money, format: .currency(code: "USD"))
-                                .monospacedDigit()
-                                .foregroundStyle(moneyColor(standing.money))
-                                .frame(minWidth: 70, alignment: .trailing)
+                                .frame(width: 18, alignment: .leading)
+                            RoundPlayTypography.headline(name(for: standing.playerID))
+                            Spacer()
+                            Text(scoreLabel(for: settlement.gameType, points: standing.points))
+                                .font(RoundPlayFont.archivo(12))
+                                .foregroundStyle(.secondary)
+                            RoundPlayTypography.money(
+                                standing.money.formatted(.currency(code: "USD").sign(strategy: .always())),
+                                size: 15
+                            )
+                            .foregroundStyle(moneyColor(standing.money))
+                            .frame(minWidth: 76, alignment: .trailing)
                         }
                         .roundPlayListRowSeparatorFullWidth()
                     }
@@ -43,19 +114,18 @@ struct RoundDashboardView: View {
                             // for one hole (the result, then a press opening), and identical
                             // strings across holes are common ("Hole 4: halved.").
                             ForEach(Array(settlement.holeExplanations.enumerated()), id: \.offset) { _, explanation in
-                                Text(explanation.text)
-                                    .font(.caption)
+                                RoundPlayTypography.caption(explanation.text)
                                     .foregroundStyle(.secondary)
                             }
                         }
                     }
                 } header: {
-                    Text(GameLibrary.metadata(for: settlement.gameType).displayName)
+                    RoundPlayTypography.eyebrow(GameLibrary.metadata(for: settlement.gameType).displayName)
                 }
             }
 
-            Section {
-                SettleUpStub()
+            if settlements.contains(where: { $0.gameType != .strokePlay }) {
+                Section { SettleUpStub() }
             }
         }
         .navigationTitle("Standings")
@@ -73,6 +143,16 @@ struct RoundDashboardView: View {
         if amount < 0 { return RoundPlayColors.moneyNegative }
         return RoundPlayColors.moneyEven
     }
+
+    private func sortedStandings(for settlement: Settlement) -> [PlayerStanding] {
+        settlement.gameType == .strokePlay
+            ? settlement.standings.sorted { $0.points < $1.points }
+            : settlement.standings.sorted { $0.money > $1.money }
+    }
+
+    private func scoreLabel(for game: GameType, points: Int) -> String {
+        game == .strokePlay ? "\(points) strokes" : "\(points) pts"
+    }
 }
 
 /// Payments are Phase 5. The affordance ships now, disabled, so the shape of the app is honest
@@ -83,8 +163,10 @@ private struct SettleUpStub: View {
             Button("Settle Up") {}
                 .buttonStyle(.borderedProminent)
                 .disabled(true)
-            Text("Coming soon — for now, settle up however you normally do.")
-                .font(.caption)
+            RoundPlayTypography.caption("Coming soon — for now, settle up however you normally do.")
+                .foregroundStyle(RoundPlayColors.moneyDisabled)
+                .multilineTextAlignment(.center)
+            RoundPlayTypography.eyebrow("RoundPlay never holds or moves money")
                 .foregroundStyle(RoundPlayColors.moneyDisabled)
                 .multilineTextAlignment(.center)
         }

@@ -1,3 +1,4 @@
+import SpriteKit
 import SwiftUI
 
 // MARK: - Celebration center
@@ -7,6 +8,7 @@ import SwiftUI
 /// Deliberately has no mascot view or shared messages catalog — the message is passed in by the
 /// caller rather than looked up, so this stays a "fireworks + big word" effect with nothing else
 /// to wire up for round completion.
+@MainActor
 @Observable
 final class CelebrationCenter {
     static let shared = CelebrationCenter()

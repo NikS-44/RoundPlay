@@ -14,12 +14,16 @@ final class CourseRecord {
     var strokeIndexes: [Int] = []
     var createdAt: Date = Date()
     var lastPlayedAt: Date?
+    /// The OpenGolf dataset id this was imported from, if any — lets re-selecting the same course
+    /// from the catalog be recognized as "already added" instead of creating a duplicate.
+    var openGolfID: String?
 
-    init(id: UUID = UUID(), name: String, pars: [Int], strokeIndexes: [Int]) {
+    init(id: UUID = UUID(), name: String, pars: [Int], strokeIndexes: [Int], openGolfID: String? = nil) {
         self.id = id
         self.name = name
         self.pars = pars
         self.strokeIndexes = strokeIndexes
+        self.openGolfID = openGolfID
     }
 
     /// Engine value type. Returns `nil` when the record is incomplete or invalid — callers must

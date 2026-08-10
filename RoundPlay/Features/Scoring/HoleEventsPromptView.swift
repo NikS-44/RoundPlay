@@ -10,6 +10,7 @@ struct HoleEventsPromptView: View {
     /// Current winner for each award, if recorded.
     let winners: [HoleEventKind: UUID]
     let onAward: (HoleEventKind, UUID) -> Void
+    var onClear: ((HoleEventKind) -> Void)? = nil
 
     private func label(for kind: HoleEventKind) -> String {
         switch kind {
@@ -23,9 +24,16 @@ struct HoleEventsPromptView: View {
         VStack(alignment: .leading, spacing: 12) {
             ForEach(HoleEventKind.allCases, id: \.self) { kind in
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(label(for: kind))
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                    HStack {
+                        RoundPlayTypography.eyebrow(label(for: kind))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        if winners[kind] != nil, let onClear {
+                            Button("Clear") { onClear(kind) }
+                                .font(RoundPlayFont.archivo(12, .semiBold))
+                                .foregroundStyle(RoundPlayColors.scoreOverPar)
+                        }
+                    }
 
                     FlowLayout(spacing: 8) {
                         ForEach(players, id: \.id) { player in

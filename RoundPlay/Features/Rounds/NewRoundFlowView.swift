@@ -1,7 +1,9 @@
 import SwiftUI
 import SwiftData
+import RoundPlayEngine
 
-/// Three-step round setup: course, players, games.
+/// Round setup: course, player count, who you know, fill in the rest, games. Every step is one
+/// focused screen with one job — no scrolling past a stepper to find a list, no combined form.
 struct NewRoundFlowView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -9,27 +11,48 @@ struct NewRoundFlowView: View {
     @State private var model = NewRoundModel()
     @State private var path = NavigationPath()
 
+    /// When launched from a game's rules screen, that game is pre-selected in step 3.
+    var preselectedGameType: GameType?
+    /// When launched from onboarding with a favorite already chosen, skip the course step.
+    var startingCourse: CourseRecord?
     let onStart: (RoundRecord) -> Void
 
-    private enum Step: Hashable { case players, games }
+    private enum Step: Hashable { case playerCount, knownPlayers, fillRemaining, holes, games }
 
     var body: some View {
         NavigationStack(path: $path) {
-            CourseListView { course in
-                model.course = course
-                path.append(Step.players)
+            Group {
+                if let startingCourse {
+                    PlayerCountStep(model: model) { path.append(Step.knownPlayers) }
+                        .onAppear { model.course = startingCourse }
+                } else {
+                    CourseListView { course in
+                        model.course = course
+                        path.append(Step.playerCount)
+                    }
+                }
             }
             .navigationDestination(for: Step.self) { step in
                 switch step {
-                case .players:
-                    PlayerSelectionStep(model: model) { path.append(Step.games) }
-                case .games:
-                    GameSetupView(model: model)
-                        .toolbar {
-                            ToolbarItem(placement: .confirmationAction) {
-                                Button("Start") { start() }.disabled(!model.canStart)
-                            }
+                case .playerCount:
+                    PlayerCountStep(model: model) { path.append(Step.knownPlayers) }
+                case .knownPlayers:
+                    // Every seat already has a real roster player — there's nothing left to
+                    // fill in, so skip straight to Holes instead of showing an empty-feeling
+                    // "confirm your placeholders" step with no placeholders on it.
+                    KnownPlayersStep(model: model) {
+                        if model.seats.allSatisfy({ !$0.isAnonymous }) {
+                            path.append(Step.holes)
+                        } else {
+                            path.append(Step.fillRemaining)
                         }
+                    }
+                case .fillRemaining:
+                    FillRemainingStep(model: model) { path.append(Step.holes) }
+                case .holes:
+                    HoleSegmentStep(model: model) { path.append(Step.games) }
+                case .games:
+                    GameSetupView(model: model, onStart: start)
                 }
             }
             .toolbar {
@@ -38,6 +61,36 @@ struct NewRoundFlowView: View {
                 }
             }
         }
+        .onAppear {
+            model.preselectedGameType = preselectedGameType
+            applyPreselectedPlayerCount()
+            autoAssignMe()
+        }
+    }
+
+    /// A game launched from its own rules screen often implies the group size — Nines is exactly
+    /// three, Nassau exactly two. Defaulting the count to that removes a step that's really just
+    /// restating what "Start a Round" from Nines already meant.
+    private func applyPreselectedPlayerCount() {
+        guard let type = preselectedGameType else { return }
+        let range = GameLibrary.metadata(for: type).playerRange
+        guard range.lowerBound == range.upperBound else { return }
+        model.playerCount = range.lowerBound
+    }
+
+    /// The person who set up this app is almost always in the round — defaulting them into the
+    /// first seat means most groups never see an unclaimed seat for their own scorekeeper.
+    /// Still just a normal seat assignment, so swapping them out is one tap like any other.
+    private func autoAssignMe() {
+        guard let idString = UserDefaults.standard.string(forKey: "myPlayerID"),
+              let id = UUID(uuidString: idString)
+        else { return }
+        let descriptor = FetchDescriptor<PlayerRecord>(predicate: #Predicate { $0.id == id })
+        guard let me = try? modelContext.fetch(descriptor).first,
+              !model.seats.contains(where: { $0.assignedPlayer?.id == me.id }),
+              let openSeat = model.seats.first(where: { $0.assignedPlayer == nil })
+        else { return }
+        openSeat.assign(to: me)
     }
 
     private func start() {
@@ -47,60 +100,469 @@ struct NewRoundFlowView: View {
     }
 }
 
-/// Who's playing. Roster first, sorted by recency — the regular group is at the top.
-private struct PlayerSelectionStep: View {
+// MARK: - Step 2a: how many
+
+/// One job: how many seats. Nothing else on the screen to look at.
+private struct PlayerCountStep: View {
     @Bindable var model: NewRoundModel
     let onContinue: () -> Void
 
-    @Query(sort: [SortDescriptor(\PlayerRecord.lastPlayedAt, order: .reverse),
+    var body: some View {
+        // Same shape as every other step — RoundBuilderStepHeader at the top of a List, continue
+        // button pinned below — so the step label and title land in the exact same spot on screen
+        // no matter which step is showing, instead of this one floating vertically centered.
+        VStack(spacing: 0) {
+            RoundPlayList.plain {
+                RoundBuilderStepHeader(step: 2, totalSteps: 6, title: "How many players?")
+
+                HStack(spacing: 28) {
+                    Spacer()
+                    Button {
+                        model.playerCount -= 1
+                    } label: {
+                        Image(systemName: "minus.circle.fill")
+                            .font(.system(size: 40))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(model.playerCount <= 2)
+
+                    RoundPlayTypography.hero("\(model.playerCount)")
+                        .frame(minWidth: 80)
+
+                    Button {
+                        model.playerCount += 1
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 40))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(model.playerCount >= 8)
+                    Spacer()
+                }
+                .foregroundStyle(RoundPlayColors.accent)
+                .padding(.top, 40)
+                .listRowSeparator(.hidden)
+                // Two independent buttons in one List row need `.buttonStyle(.plain)` on each —
+                // without it, the row's own tap handling can swallow taps on anything but the
+                // first control. This is what broke +/- after this step moved from a bare VStack
+                // into a List for layout consistency with the other steps.
+            }
+
+            RoundBuilderContinueButton(title: "Next", action: onContinue)
+        }
+        .navigationTitle("Players")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+// MARK: - Step 2b: who you know
+
+/// One job: pick anyone in this group who's already in your roster. Nothing yet about the ones
+/// who aren't — that's the next screen, deliberately, so this one stays a single fast list.
+private struct KnownPlayersStep: View {
+    @Bindable var model: NewRoundModel
+    let onContinue: () -> Void
+
+    @Query(sort: [SortDescriptor(\PlayerRecord.playCount, order: .reverse),
                   SortDescriptor(\PlayerRecord.name)])
     private var players: [PlayerRecord]
 
-    @State private var isAddingPlayer = false
+    @State private var searchText = ""
+
+    private var filtered: [PlayerRecord] {
+        guard !searchText.isEmpty else { return players }
+        return players.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+    }
+
+    private var selectedCount: Int {
+        model.seats.filter { $0.assignedPlayer != nil }.count
+    }
 
     var body: some View {
-        RoundPlayList.plain {
-            ForEach(players) { player in
-                Button {
-                    toggle(player)
-                } label: {
-                    HStack {
-                        Image(systemName: isSelected(player) ? "checkmark.circle.fill" : "circle")
-                            .font(.title2)
-                            .foregroundStyle(isSelected(player) ? RoundPlayColors.accent : .secondary)
-                        PlayerRow(player: player)
+        VStack(spacing: 0) {
+            RoundPlayList.plain {
+                RoundBuilderStepHeader(
+                    step: 3,
+                    totalSteps: 6,
+                    title: "Anybody from your roster?",
+                    detail: "\(selectedCount) of \(model.playerCount) selected"
+                )
+
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                    TextField("Search roster", text: $searchText)
+                        .autocorrectionDisabled()
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(RoundPlayColors.fillSecondary))
+                .listRowSeparator(.hidden)
+
+                if players.isEmpty {
+                    ContentUnavailableView(
+                        "No one in your roster yet",
+                        systemImage: "person.2",
+                        description: Text("That's fine — everyone can be filled in on the next screen.")
+                    )
+                } else {
+                    ForEach(filtered) { player in
+                        Button {
+                            toggle(player)
+                        } label: {
+                            HStack {
+                                Image(systemName: isSelected(player) ? "checkmark.circle.fill" : "circle")
+                                    .font(.title2)
+                                    .foregroundStyle(isSelected(player) ? RoundPlayColors.accent : .secondary)
+                                PlayerRow(player: player)
+                            }
+                        }
+                        .buttonStyle(RoundPlayRowButtonStyle())
+                        .disabled(!isSelected(player) && selectedCount >= model.playerCount)
+                        .roundPlayListRowSeparatorFullWidth()
                     }
                 }
-                .buttonStyle(RoundPlayRowButtonStyle())
-                .roundPlayListRowSeparatorFullWidth()
             }
+
+            RoundBuilderContinueButton(title: "Next", action: onContinue)
         }
-        .navigationTitle("Players")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button("New", systemImage: "plus") { isAddingPlayer = true }
-            }
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Next", action: onContinue)
-                    .disabled(model.selectedPlayers.count < 2)
-            }
-        }
-        .sheet(isPresented: $isAddingPlayer) {
-            NavigationStack {
-                PlayerEditSheet(player: nil) { model.selectedPlayers.append($0) }
-            }
-        }
+        .navigationTitle("From Your Roster")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private func isSelected(_ player: PlayerRecord) -> Bool {
-        model.selectedPlayers.contains { $0.id == player.id }
+        model.seats.contains { $0.assignedPlayer?.id == player.id }
     }
 
     private func toggle(_ player: PlayerRecord) {
-        if isSelected(player) {
-            model.selectedPlayers.removeAll { $0.id == player.id }
-        } else {
-            model.selectedPlayers.append(player)
+        if let seat = model.seats.first(where: { $0.assignedPlayer?.id == player.id }) {
+            seat.assignedPlayer = nil
+            seat.isPlaceholder = true
+        } else if let openSeat = model.seats.first(where: { $0.assignedPlayer == nil && $0.isPlaceholder }) {
+            openSeat.assign(to: player)
+        }
+    }
+}
+
+// MARK: - Step 2c: fill in the rest
+
+/// Whoever wasn't picked on the previous screen already has a placeholder nickname — this screen
+/// is for confirming or renaming those, not for blocking on them. Next always works.
+private struct FillRemainingStep: View {
+    @Bindable var model: NewRoundModel
+    let onContinue: () -> Void
+
+    @State private var assigningSeat: RoundSeatDraft?
+    @State private var settingHandicapFor: RoundSeatDraft?
+
+    var body: some View {
+        VStack(spacing: 0) {
+            RoundPlayList.plain {
+                RoundBuilderStepHeader(step: 4, totalSteps: 6, title: "Add other players")
+
+                Section {
+                    ForEach(Array(model.seats.enumerated()), id: \.element.id) { index, seat in
+                        SeatRow(
+                            seatNumber: index + 1,
+                            seat: seat,
+                            onAssign: { assigningSeat = seat },
+                            onEditHandicap: { settingHandicapFor = seat }
+                        )
+                        .roundPlayListRowSeparatorFullWidth()
+                    }
+                } footer: {
+                    RoundPlayTypography.caption("Placeholder names are random and only used for this round. Tap one to give it a real name — that saves it to your roster.")
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            RoundBuilderContinueButton(title: "Next", action: onContinue)
+        }
+        .navigationTitle("Fill in the rest")
+        .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $assigningSeat) { seat in
+            NavigationStack {
+                SeatAssignmentSheet(model: model, seat: seat)
+            }
+            .presentationDetents([.large])
+        }
+        .sheet(item: $settingHandicapFor) { seat in
+            HandicapPickerSheet(handicap: Binding(
+                get: { seat.guestHandicap },
+                set: { seat.guestHandicap = $0 }
+            ))
+            .presentationDetents([.height(300)])
+        }
+        .onAppear(perform: assignInitialNicknames)
+    }
+
+    /// Every seat needs a name the moment this screen appears, so the list never shows a blank
+    /// row waiting to be noticed.
+    private func assignInitialNicknames() {
+        for seat in model.seats where seat.isAnonymous && seat.guestName.isEmpty {
+            seat.guestName = GuestNickname.random(avoiding: model.namesInUse)
+        }
+    }
+}
+
+// MARK: - Step 2d: how many holes
+
+/// One job: front 9, back 9, or all 18. Its own screen rather than a strip bolted onto Games, so
+/// it gets the same weight as every other choice in this flow.
+private struct HoleSegmentStep: View {
+    @Bindable var model: NewRoundModel
+    let onContinue: () -> Void
+
+    private let options: [RoundSegment] = [.front, .back, .total]
+
+    private func label(for segment: RoundSegment) -> String {
+        switch segment {
+        case .front: "Front 9"
+        case .back: "Back 9"
+        case .total: "All 18"
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            RoundPlayList.plain {
+                RoundBuilderStepHeader(step: 5, totalSteps: 6, title: "How many holes are you playing?")
+
+                HStack(spacing: 10) {
+                    ForEach(options, id: \.self) { segment in
+                        HoleSegmentOptionButton(
+                            title: label(for: segment),
+                            isSelected: model.holeSegment == segment
+                        ) {
+                            model.holeSegment = segment
+                        }
+                    }
+                }
+                .listRowSeparator(.hidden)
+            }
+
+            RoundBuilderContinueButton(title: "Next", action: onContinue)
+        }
+        .navigationTitle("Holes")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// A big radio-style card for one hole-count option — three of these sit side by side, so the
+/// choice reads as a single obvious decision instead of a small segmented strip.
+private struct HoleSegmentOptionButton: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 10) {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 22))
+                    .foregroundStyle(isSelected ? RoundPlayColors.accent : .secondary)
+                Text(title)
+                    .font(RoundPlayFont.archivo(16, .semiBold))
+                    .foregroundStyle(isSelected ? .primary : .secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 20)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(isSelected ? RoundPlayColors.accent.opacity(0.12) : RoundPlayColors.fillSecondary)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(isSelected ? RoundPlayColors.accent : Color.clear, lineWidth: 2)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// One seat: a roster player, a renamed guest (both "confirmed," solid styling), or a still-
+/// untouched placeholder (dashed outline, muted — reads as "not filled in yet" without blocking).
+struct SeatRow: View {
+    let seatNumber: Int
+    let seat: RoundSeatDraft
+    let onAssign: () -> Void
+    let onEditHandicap: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text("\(seatNumber)")
+                .font(RoundPlayFont.archivo(13, .bold))
+                .foregroundStyle(.secondary)
+                .frame(width: 22, height: 22)
+                .background(Circle().fill(RoundPlayColors.fillSecondary))
+
+            Button(action: onAssign) {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        RoundPlayTypography.headline(seat.displayName)
+                            .foregroundStyle(seat.isPlaceholder ? .secondary : .primary)
+                        if seat.isPlaceholder {
+                            RoundPlayTypography.eyebrow("Placeholder")
+                                .foregroundStyle(RoundPlayColors.pin)
+                        }
+                    }
+                    if !seat.isPlaceholder {
+                        RoundPlayTypography.caption(seat.handicapLabel)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .strokeBorder(
+                            seat.isPlaceholder ? RoundPlayColors.pin.opacity(0.4) : Color.clear,
+                            style: StrokeStyle(lineWidth: 1, dash: seat.isPlaceholder ? [4, 3] : [])
+                        )
+                )
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if seat.isAnonymous {
+                Button(action: onEditHandicap) {
+                    RoundPlayTypography.caption(seat.handicapLabel)
+                        .foregroundStyle(RoundPlayColors.accent)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+}
+
+/// Who's really in this seat: search the roster, or give it a real name of your own. Reachable
+/// from a single tap on any seat, placeholder or not — changing your mind should never be harder
+/// than the first choice was.
+struct SeatAssignmentSheet: View {
+    @Bindable var model: NewRoundModel
+    let seat: RoundSeatDraft
+    @Environment(\.dismiss) private var dismiss
+
+    @Query(sort: [SortDescriptor(\PlayerRecord.playCount, order: .reverse),
+                  SortDescriptor(\PlayerRecord.name)])
+    private var players: [PlayerRecord]
+
+    @State private var searchText = ""
+    @State private var firstName = ""
+    @State private var lastName = ""
+    @FocusState private var isNameFocused: Bool
+
+    /// Players already claimed by another seat can't be picked again.
+    private var available: [PlayerRecord] {
+        let takenIDs = Set(model.seats.filter { $0 !== seat }.compactMap { $0.assignedPlayer?.id })
+        let pool = players.filter { !takenIDs.contains($0.id) }
+        guard !searchText.isEmpty else { return pool }
+        return pool.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+    }
+
+    private var trimmedFullName: String {
+        [firstName, lastName]
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+    }
+
+    var body: some View {
+        RoundPlayList.plain {
+            // Primary: name this seat directly. The roster was already offered a full screen ago
+            // ("From Your Roster") — someone opening this sheet is here to name a placeholder,
+            // not browse the roster again, so that goes second, always visible, no accordion.
+            Section {
+                VStack(spacing: 10) {
+                    TextField("First name", text: $firstName)
+                        .textInputAutocapitalization(.words)
+                        .autocorrectionDisabled()
+                        .focused($isNameFocused)
+                        .font(RoundPlayFont.archivo(21, .semiBold))
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 16)
+                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(RoundPlayColors.fillSecondary))
+
+                    TextField("Last name (optional)", text: $lastName)
+                        .textInputAutocapitalization(.words)
+                        .autocorrectionDisabled()
+                        .font(RoundPlayFont.archivo(21, .semiBold))
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 16)
+                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(RoundPlayColors.fillSecondary))
+
+                    Button {
+                        seat.rename(to: trimmedFullName, handicap: seat.guestHandicap)
+                        dismiss()
+                    } label: {
+                        Text("Save")
+                            .font(RoundPlayFont.archivo(17, .semiBold))
+                            .frame(maxWidth: .infinity, minHeight: 50)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(RoundPlayColors.accent)
+                    .disabled(trimmedFullName.isEmpty)
+                }
+                .listRowSeparator(.hidden)
+            } header: {
+                RoundPlayTypography.eyebrow("Who's in this seat?")
+                    .foregroundStyle(.secondary)
+            } footer: {
+                RoundPlayTypography.caption("Saves to your roster — next round, they're one tap away.")
+                    .foregroundStyle(.secondary)
+            }
+
+            // Secondary: the roster, always visible underneath — no accordion to open first.
+            Section {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                    TextField("Search roster", text: $searchText)
+                        .autocorrectionDisabled()
+                }
+                .listRowSeparator(.hidden)
+
+                ForEach(available) { player in
+                    Button {
+                        seat.assign(to: player)
+                        dismiss()
+                    } label: {
+                        HStack {
+                            PlayerRow(player: player)
+                            if seat.assignedPlayer?.id == player.id {
+                                Spacer()
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(RoundPlayColors.accent)
+                            }
+                        }
+                    }
+                    .buttonStyle(RoundPlayRowButtonStyle())
+                    .roundPlayListRowSeparatorFullWidth()
+                }
+            } header: {
+                RoundPlayTypography.eyebrow("Roster")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .navigationTitle("Who's playing?")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Done") { dismiss() }
+            }
+        }
+        .onAppear {
+            let parts = seat.guestName.split(separator: " ", maxSplits: 1)
+            if seat.isPlaceholder {
+                // A placeholder's random nickname isn't worth pre-filling — start blank so the
+                // user isn't stuck deleting "Birdie Malone" before typing a real name.
+                isNameFocused = true
+            } else {
+                firstName = parts.first.map(String.init) ?? ""
+                lastName = parts.count > 1 ? String(parts[1]) : ""
+            }
         }
     }
 }

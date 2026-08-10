@@ -79,3 +79,26 @@ func nonStrokePayloadsResolve() {
     #expect(state.holeEventWinner(hole: 3, kind: .bingo) == bob)
     #expect(state.holeEventWinner(hole: 3, kind: .bango) == nil)
 }
+
+@Test("A clear-strokes event removes a score without deleting audit history")
+func clearStrokesRemovesCurrentValue() {
+    let log = [
+        strokeEvent(hole: 1, player: alice, strokes: 5, by: alice, seq: 1),
+        ScoreEvent(id: UUID(), hole: 1, playerID: alice, payload: .clearStrokes, enteredBy: alice, sequence: 2)
+    ]
+    let state = RoundState(log: log, seats: seats(), course: .testPar72)
+    #expect(state.gross(hole: 1, player: alice) == nil)
+    #expect(state.isComplete(hole: 1) == false)
+}
+
+@Test("A clear hole-event event removes its current winner")
+func clearHoleEventRemovesCurrentWinner() {
+    let log = [
+        ScoreEvent(id: UUID(), hole: 1, playerID: alice,
+                   payload: .holeEvent(.bingo), enteredBy: alice, sequence: 1),
+        ScoreEvent(id: UUID(), hole: 1, playerID: alice,
+                   payload: .clearHoleEvent(.bingo), enteredBy: alice, sequence: 2)
+    ]
+    let state = RoundState(log: log, seats: seats(), course: .testPar72)
+    #expect(state.holeEventWinner(hole: 1, kind: .bingo) == nil)
+}

@@ -10,17 +10,25 @@ final class RoundRecord {
     var courseName: String = ""
     var startedAt: Date = Date()
     var completedAt: Date?
+    /// Soft delete — "Delete Round" sets this instead of removing the record, so it can show up
+    /// in Recently Deleted and be restored. Only the permanent-delete action in that list actually
+    /// removes it from the store.
+    var deletedAt: Date?
     /// Monotonic counter for `ScoreEventRecord.sequence`. Phase 2 hands this to the server.
     var nextSequence: Int = 1
+    /// Which holes this round plays — `RoundSegment.rawValue`. Stored as a string, same reasoning
+    /// as `GameInstanceRecord.gameTypeRaw`: schema stays stable if the engine's cases change.
+    var holesPlayedRaw: String = RoundSegment.total.rawValue
 
     @Relationship(deleteRule: .cascade) var seats: [SeatRecord]? = []
     @Relationship(deleteRule: .cascade) var games: [GameInstanceRecord]? = []
     @Relationship(deleteRule: .cascade) var events: [ScoreEventRecord]? = []
 
-    init(id: UUID = UUID(), courseID: UUID, courseName: String) {
+    init(id: UUID = UUID(), courseID: UUID, courseName: String, holeSegment: RoundSegment = .total) {
         self.id = id
         self.courseID = courseID
         self.courseName = courseName
+        self.holesPlayedRaw = holeSegment.rawValue
     }
 
     var orderedSeats: [SeatRecord] {
@@ -28,6 +36,23 @@ final class RoundRecord {
     }
 
     var isComplete: Bool { completedAt != nil }
+    var isDeleted: Bool { deletedAt != nil }
+
+    var holeSegment: RoundSegment {
+        RoundSegment(rawValue: holesPlayedRaw) ?? .total
+    }
+}
+
+extension RoundSegment {
+    /// The physical holes this segment covers — distinct from `contains(hole:)`, which answers
+    /// "is this hole in the segment" rather than "what's the first/last hole to navigate to."
+    var holeRange: ClosedRange<Int> {
+        switch self {
+        case .front: 1...9
+        case .back: 10...18
+        case .total: 1...18
+        }
+    }
 }
 
 /// A player's place in a round.

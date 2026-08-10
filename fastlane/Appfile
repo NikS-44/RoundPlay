@@ -1,0 +1,6 @@
+app_identifier("app.roundplay.RoundPlay") # The bundle identifier of your app
+apple_id("electronicmailaddress@gmail.com") # Your Apple ID / App Store Connect login
+
+team_id("XVD9C7XLM5") # Apple Developer Portal Team ID
+# itc_team_id("...") # App Store Connect Team ID — only needed if your account
+                      # belongs to more than one App Store Connect team
