@@ -63,19 +63,22 @@ struct SettleUpSheet: View {
 
     private func paymentRow(_ payment: SettlementPayment) -> some View {
         HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
+            // "Nik owes Tilly" as one sentence rather than a name stacked over an arrow and
+            // another name — an arrow makes the reader work out the direction, where the sentence
+            // just says it. Both names stay bold so they're still what the eye lands on; "owes" is
+            // the quiet part.
+            (
                 Text(payment.debtorName)
                     .font(RoundPlayFont.archivo(19, .bold))
-                HStack(spacing: 5) {
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(RoundPlayColors.accent)
-                    Text(payment.creditorName)
-                        .font(RoundPlayFont.archivo(16, .semiBold))
-                        .foregroundStyle(.primary.opacity(0.7))
-                }
-            }
-            Spacer()
+                + Text(" owes ")
+                    .font(RoundPlayFont.archivo(17))
+                    .foregroundColor(.secondary)
+                + Text(payment.creditorName)
+                    .font(RoundPlayFont.archivo(19, .bold))
+            )
+            .fixedSize(horizontal: false, vertical: true)
+
+            Spacer(minLength: 12)
             // Deliberately *not* red. A payment isn't a loss — half the people reading this sheet
             // are collecting — and a column of red amounts made settling up look like a problem
             // to fix rather than the good part of the round.
