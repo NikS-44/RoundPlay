@@ -132,6 +132,7 @@ struct RoundSummaryView: View {
                 .roundPlayListRowSeparatorFullWidth()
             }
         }
+        .listSectionSpacing(.compact)
         .navigationTitle("Summary")
         .navigationBarTitleDisplayMode(.inline)
     }

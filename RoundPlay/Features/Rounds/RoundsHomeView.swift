@@ -527,8 +527,10 @@ struct RoundTabsView: View {
                 }
                 if !round.isComplete {
                     if hasGames {
+                        // Opens the breakdown directly. This used to just switch to Standings,
+                        // which was where the disabled "Coming soon" stub lived.
                         Button("Settle Up") {
-                            selection = .standings
+                            isSharingSettlement = true
                         }
                     }
                     Button("Finish Early") {

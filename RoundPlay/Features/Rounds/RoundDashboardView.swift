@@ -125,7 +125,7 @@ struct RoundDashboardView: View {
             }
 
             if settlements.contains(where: { $0.gameType != .strokePlay }) {
-                Section { SettleUpStub() }
+                Section { SettleUpSection(round: round, course: course) }
             }
         }
         .navigationTitle("Standings")
@@ -155,23 +155,33 @@ struct RoundDashboardView: View {
     }
 }
 
-/// Payments are Phase 5. The affordance ships now, disabled, so the shape of the app is honest
-/// about where it is going — and so the ledger has a home when it arrives.
-private struct SettleUpStub: View {
+/// Opens the who-owes-who breakdown.
+///
+/// This shipped for a long time as a disabled "Coming soon" stub, from before `SettleUpSheet`
+/// existed. Once the Summary tab grew a working Settle Up button, the stub was actively lying:
+/// the same round offered a live breakdown on one tab and a greyed-out promise on the next.
+///
+/// The "never holds or moves money" line stays — that's a standing disclosure, not a stub.
+private struct SettleUpSection: View {
+    let round: RoundRecord
+    let course: Course
+
+    @State private var isSettling = false
+
     var body: some View {
         VStack(spacing: 6) {
-            Button("Settle Up") {}
+            Button("Settle Up") { isSettling = true }
                 .roundPlayPrimaryButtonStyle()
-                .disabled(true)
-            RoundPlayTypography.caption("Coming soon — for now, settle up however you normally do.")
-                .foregroundStyle(RoundPlayColors.moneyDisabled)
-                .multilineTextAlignment(.center)
+                .tint(RoundPlayColors.accent)
             RoundPlayTypography.eyebrow("RoundPlay never holds or moves money")
-                .foregroundStyle(RoundPlayColors.moneyDisabled)
+                .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
+        .sheet(isPresented: $isSettling) {
+            SettleUpSheet(round: round, course: course)
+        }
     }
 }
 
