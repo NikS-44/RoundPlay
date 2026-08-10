@@ -39,18 +39,29 @@ struct RoundSummaryView: View {
             .sorted { $0.1 > $1.1 }
     }
 
-    /// Gross and net strokes for the whole round — the number every scorecard actually ends on,
-    /// shown here regardless of whether any money games were running.
-    private var finalScores: [(seat: SeatRecord, gross: Int, netRelativeToPar: Int)] {
+    /// Gross and net strokes for the round, shown regardless of whether any money games ran.
+    ///
+    /// Every total is computed over only the holes this player actually has a score for. Summing
+    /// par across the *whole* segment while gross only covered played holes made a round finished
+    /// after 4 holes report "Gross 22 · −49", which reads as a course record rather than a short
+    /// round.
+    private var finalScores: [(seat: SeatRecord, gross: Int, netRelativeToPar: Int, holesPlayed: Int)] {
         let state = EngineBridge.roundState(for: round, course: course)
         let holes = round.holeSegment.holeRange
         return round.orderedSeats.map { seat in
-            let gross = holes.reduce(0) { $0 + (state.gross(hole: $1, player: seat.playerID) ?? 0) }
-            let net = holes.reduce(0) { $0 + (state.net(hole: $1, player: seat.playerID) ?? 0) }
-            let par = holes.reduce(0) { $0 + (course.hole($1)?.par ?? 0) }
-            return (seat, gross, net - par)
+            let played = holes.filter { state.gross(hole: $0, player: seat.playerID) != nil }
+            let gross = played.reduce(0) { $0 + (state.gross(hole: $1, player: seat.playerID) ?? 0) }
+            let net = played.reduce(0) { $0 + (state.net(hole: $1, player: seat.playerID) ?? 0) }
+            let par = played.reduce(0) { $0 + (course.hole($1)?.par ?? 0) }
+            return (seat, gross, net - par, played.count)
         }
         .sorted { $0.netRelativeToPar < $1.netRelativeToPar }
+    }
+
+    /// True when the round stopped short of its full segment — the score rows then say how far
+    /// the group actually got, so "Gross 22" has somewhere to stand.
+    private var isPartialRound: Bool {
+        finalScores.contains { $0.holesPlayed < round.holeSegment.holeRange.count }
     }
 
     var body: some View {
@@ -64,11 +75,22 @@ struct RoundSummaryView: View {
 
             Section {
                 ForEach(Array(finalScores.enumerated()), id: \.element.seat.id) { index, entry in
-                    finalScoreRow(rank: index + 1, seat: entry.seat, gross: entry.gross, netRelativeToPar: entry.netRelativeToPar)
+                    finalScoreRow(
+                        rank: index + 1,
+                        seat: entry.seat,
+                        gross: entry.gross,
+                        netRelativeToPar: entry.netRelativeToPar,
+                        holesPlayed: entry.holesPlayed
+                    )
                 }
             } header: {
                 RoundPlayTypography.eyebrow("Final Scores")
                     .foregroundStyle(.secondary)
+            } footer: {
+                if isPartialRound {
+                    RoundPlayTypography.caption("This round ended early — totals cover the holes that were scored.")
+                        .foregroundStyle(.secondary)
+                }
             }
 
             if hasGames {
@@ -184,14 +206,14 @@ struct RoundSummaryView: View {
 
     // MARK: - Final score rows
 
-    private func finalScoreRow(rank: Int, seat: SeatRecord, gross: Int, netRelativeToPar: Int) -> some View {
+    private func finalScoreRow(rank: Int, seat: SeatRecord, gross: Int, netRelativeToPar: Int, holesPlayed: Int) -> some View {
         HStack(spacing: 12) {
             RoundPlayTypography.numeral("\(rank)", size: 15)
                 .foregroundStyle(.secondary)
                 .frame(width: 18, alignment: .leading)
             RoundPlayTypography.headline(seat.name)
             Spacer()
-            Text("Gross \(gross)")
+            Text(isPartialRound ? "Gross \(gross) · thru \(holesPlayed)" : "Gross \(gross)")
                 .font(RoundPlayFont.archivo(12))
                 .foregroundStyle(.secondary)
             RoundPlayTypography.money(relativeToParLabel(netRelativeToPar), size: 15)

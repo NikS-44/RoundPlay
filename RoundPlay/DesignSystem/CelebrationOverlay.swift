@@ -25,6 +25,14 @@ final class CelebrationCenter {
     func celebrate(_ word: String) {
         event = Celebration(word: word)
     }
+
+    /// Tears the overlay down once the animation has played out. Without this the SpriteKit scene
+    /// stays mounted at the app root and keeps rendering particles for the rest of the session —
+    /// invisible, but burning CPU and battery on a phone that's usually already back in a pocket.
+    func finish(_ id: Celebration.ID) {
+        guard event?.id == id else { return }
+        event = nil
+    }
 }
 
 // MARK: - Root overlay
@@ -92,9 +100,14 @@ private struct CelebrationView: View {
                 ? .easeOut(duration: 0.2)
                 : .spring(response: 0.42, dampingFraction: 0.55)
             withAnimation(appear) { showWord = true }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
-                withAnimation(.easeIn(duration: 0.45)) { hideWord = true }
-            }
+        }
+        .task {
+            try? await Task.sleep(for: .seconds(1.6))
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeIn(duration: 0.45)) { hideWord = true }
+            try? await Task.sleep(for: .seconds(0.45))
+            guard !Task.isCancelled else { return }
+            CelebrationCenter.shared.finish(event.id)
         }
     }
 }
