@@ -43,6 +43,8 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         ENABLE_USER_SCRIPT_SANDBOXING: YES
+        DEVELOPMENT_TEAM: XVD9C7XLM5
+        CODE_SIGN_STYLE: Automatic
   RoundPlayTests:
     type: bundle.unit-test
     platform: iOS
