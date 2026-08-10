@@ -15,6 +15,9 @@ final class RoundSeatDraft: Identifiable {
     var assignedPlayer: PlayerRecord?
     var guestName: String = ""
     var guestHandicap: Double?
+    /// Renaming a placeholder is round-only unless the user deliberately chooses the roster
+    /// action in the assignment sheet.
+    var shouldAddToRoster = false
     /// True until the seat is explicitly assigned or renamed. Drives both the "Placeholder" tag
     /// and whether this seat's guest gets saved to the roster.
     var isPlaceholder = true
@@ -44,11 +47,12 @@ final class RoundSeatDraft: Identifiable {
 
     /// Gives the seat its own name instead of the roster — always persisted, since typing a name
     /// is an explicit "this is a real person" signal.
-    func rename(to name: String, handicap: Double?) {
+    func rename(to name: String, handicap: Double?, addToRoster: Bool = false) {
         assignedPlayer = nil
         guestName = name
         guestHandicap = handicap
         isPlaceholder = false
+        shouldAddToRoster = addToRoster
     }
 
     /// Resolves this seat to the `PlayerRecord` it should use in the round. Placeholders that
@@ -65,6 +69,9 @@ final class RoundSeatDraft: Identifiable {
         if isPlaceholder {
             let handicap = Int((guestHandicap ?? 0).rounded())
             return (UUID(), guestName, handicap, nil)
+        }
+        guard shouldAddToRoster else {
+            return (UUID(), guestName, Int((guestHandicap ?? 0).rounded()), nil)
         }
         let record = PlayerRecord(name: guestName, handicapIndex: guestHandicap)
         context.insert(record)
@@ -90,10 +97,47 @@ final class NewRoundModel {
     /// onboarding) — skips straight past the course step.
     var skipsCourseStep = false
 
+    // MARK: - Step numbering
+
+    /// The screens the round builder can walk through, in order.
+    ///
+    /// Two of them are conditional — `fillRemaining` is skipped when the roster already filled
+    /// every seat, and `bestBallTeams` only exists for Best Ball — so the step labels can't be
+    /// hardcoded per screen. They were, and disagreed: the course step said "Step 1 of 6" while
+    /// every screen after it said "of 7", and a group that filled all four seats from the roster
+    /// counted 1, 2, 3, 5, 6 with no step 4 in sight.
+    enum BuilderStep: CaseIterable {
+        case course, playerCount, knownPlayers, fillRemaining, holes, games, bestBallTeams
+    }
+
+    /// Only the steps this particular round will actually show.
+    private var activeSteps: [BuilderStep] {
+        BuilderStep.allCases.filter { step in
+            switch step {
+            case .course: !skipsCourseStep
+            case .fillRemaining: seats.contains(where: \.isAnonymous)
+            case .bestBallTeams: configurations.contains { $0.gameType == .bestBall }
+            default: true
+            }
+        }
+    }
+
+    var totalSteps: Int { activeSteps.count }
+
+    /// 1-based position of `step` among the steps actually being shown. Falls back to the
+    /// unconditional ordering if asked about a step this round skips, so a label can never read
+    /// "Step 0".
+    func stepNumber(for step: BuilderStep) -> Int {
+        guard let index = activeSteps.firstIndex(of: step) else {
+            return (BuilderStep.allCases.firstIndex(of: step) ?? 0) + 1
+        }
+        return index + 1
+    }
+
     var playerCount: Int {
         get { seats.count }
         set {
-            let count = max(2, min(8, newValue))
+            let count = max(1, min(8, newValue))
             if count < seats.count {
                 seats.removeLast(seats.count - count)
             } else if count > seats.count {
@@ -116,12 +160,14 @@ final class NewRoundModel {
 
     var allSeatsFilled: Bool { seats.allSatisfy(\.isFilled) }
 
+    var bestBallTeamsComplete: Bool {
+        !configurations.contains(where: { $0.gameType == .bestBall }) || bestBallTeamA.count == 2
+    }
+
     /// Games are optional — a group that just wants a scorecard, no bets, still gets a normal
     /// stroke-play round.
     var canStart: Bool {
-        course?.engineCourse != nil && seats.count >= 2 && allSeatsFilled && configurations.allSatisfy {
-            $0.gameType == .strokePlay || $0.unitStake > 0
-        }
+        course?.engineCourse != nil && seats.count >= 1 && allSeatsFilled && bestBallTeamsComplete
     }
 
     /// Every name already spoken for in this round — assigned players and guests already

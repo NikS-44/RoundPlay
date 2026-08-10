@@ -23,6 +23,24 @@ extension View {
     func roundPlayListRowSeparatorFullWidth() -> some View {
         alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
     }
+
+    /// Primary actions keep their hierarchy without creating a bright filled block in dark mode.
+    @MainActor
+    func roundPlayPrimaryButtonStyle() -> some View {
+        modifier(RoundPlayPrimaryButtonModifier())
+    }
+}
+
+private struct RoundPlayPrimaryButtonModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        if colorScheme == .dark {
+            content.buttonStyle(.bordered)
+        } else {
+            content.buttonStyle(.borderedProminent)
+        }
+    }
 }
 
 /// Press feedback for list rows that navigate but are not `NavigationLink`s — plain `Button` rows

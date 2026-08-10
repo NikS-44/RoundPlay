@@ -6,58 +6,71 @@ struct GameSetupView: View {
     @Bindable var model: NewRoundModel
     let onStart: () -> Void
     /// False when reused as a standalone "edit games" sheet (e.g. Play Again) rather than the
-    /// last step of the round builder — hides the "Step 6 of 6" chrome that wouldn't apply there.
+    /// games step of the round builder — hides the step chrome when reused as a standalone sheet.
     var showsStepHeader: Bool = true
     var continueButtonTitle: String = "Start Round"
     @State private var stakes: [GameType: Decimal] = [:]
+    /// Lifted out of the row so there is exactly one keyboard toolbar for the whole screen —
+    /// a `.keyboard` toolbar per row fights itself once more than one game is expanded.
+    @FocusState private var focusedStake: GameType?
 
     var body: some View {
-        VStack(spacing: 0) {
-            RoundPlayList.plain {
-                if showsStepHeader {
-                    RoundBuilderStepHeader(
-                        step: 6,
-                        totalSteps: 6,
-                        title: "What games do you want to play?",
-                        detail: "\(model.seats.count) players"
+        RoundPlayList.plain {
+            if showsStepHeader {
+                RoundBuilderStepHeader(
+                    step: model.stepNumber(for: .games),
+                    totalSteps: model.totalSteps,
+                    title: "What games do you want to play?",
+                    detail: "\(model.seats.count) players"
+                )
+            }
+
+            Section {
+                if model.eligibleGames.isEmpty {
+                    ContentUnavailableView(
+                        "No games for this group size",
+                        systemImage: "person.2.slash",
+                        description: Text("Add or remove a player to see available games.")
                     )
                 }
 
-                Section {
-                    if model.eligibleGames.isEmpty {
-                        ContentUnavailableView(
-                            "No games for this group size",
-                            systemImage: "person.2.slash",
-                            description: Text("Add or remove a player to see available games.")
-                        )
-                    }
-
-                    ForEach(model.eligibleGames) { metadata in
-                        GameSelectionRow(
-                            metadata: metadata,
-                            isSelected: isSelected(metadata.gameType),
-                            stake: stakeBinding(for: metadata.gameType),
-                            holeCount: model.holeSegment.holeRange.count,
-                            onToggle: { toggle(metadata.gameType) }
-                        )
-                        .roundPlayListRowSeparatorFullWidth()
-                    }
-                    if isSelected(.bestBall) {
-                        BestBallTeamPicker(model: model)
-                            .roundPlayListRowSeparatorFullWidth()
-                    }
-                } header: {
-                    Text("Games")
-                        .font(RoundPlayFont.archivo(15, .bold))
-                        .foregroundStyle(RoundPlayColors.accent)
-                } footer: {
-                    RoundPlayTypography.caption("Optional — pick none and it's still a normal scorecard, just no side bets.")
-                        .foregroundStyle(.secondary)
+                ForEach(model.eligibleGames) { metadata in
+                    GameSelectionRow(
+                        metadata: metadata,
+                        isSelected: isSelected(metadata.gameType),
+                        stake: stakeBinding(for: metadata.gameType),
+                        holeCount: model.holeSegment.holeRange.count,
+                        focusedStake: $focusedStake,
+                        onToggle: { toggle(metadata.gameType) }
+                    )
+                    .roundPlayListRowSeparatorFullWidth()
                 }
+            } header: {
+                Text("Games")
+                    .font(RoundPlayFont.archivo(15, .bold))
+                    .foregroundStyle(RoundPlayColors.accent)
+            } footer: {
+                RoundPlayTypography.caption("Optional — pick none and it's still a normal scorecard, just no side bets.")
+                    .foregroundStyle(.secondary)
             }
-
-            RoundBuilderContinueButton(title: continueButtonTitle, isEnabled: model.canStart, action: onStart)
         }
+        .safeAreaInset(edge: .bottom) {
+            // The stake field opens a decimal pad, which has no return key. Letting the keyboard
+            // shove this button up put it under the user's thumb mid-typing with no way out, so
+            // the button holds its spot and the keyboard toolbar below owns dismissal.
+            RoundBuilderContinueButton(title: continueButtonTitle, isEnabled: model.canStart, action: onStart)
+                .ignoresSafeArea(.keyboard, edges: .bottom)
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { focusedStake = nil }
+                    .font(RoundPlayFont.archivo(17, .bold))
+                    .tint(RoundPlayColors.accent)
+            }
+        }
+        // Picking a game and naming a number is the moment real money enters the round.
+        .sensoryFeedback(RoundPlayHaptics.decision, trigger: model.configurations.count)
         .navigationTitle("Games")
         .onAppear {
             if let existingBestBall = model.configurations.compactMap({ configuration in
@@ -83,7 +96,7 @@ struct GameSetupView: View {
 
     private func stakeBinding(for type: GameType) -> Binding<Decimal> {
         Binding(
-            get: { stakes[type] ?? 1 },
+            get: { stakes[type] ?? 0 },
             set: { stakes[type] = $0; rebuild(type) }
         )
     }
@@ -92,14 +105,14 @@ struct GameSetupView: View {
         if isSelected(type) {
             model.configurations.removeAll { $0.gameType == type }
         } else {
-            model.configurations.append(configuration(for: type, stake: stakes[type] ?? 1))
+            model.configurations.append(configuration(for: type, stake: stakes[type] ?? 0))
         }
     }
 
     private func rebuild(_ type: GameType) {
         guard isSelected(type) else { return }
         model.configurations.removeAll { $0.gameType == type }
-        model.configurations.append(configuration(for: type, stake: stakes[type] ?? 1))
+        model.configurations.append(configuration(for: type, stake: stakes[type] ?? 0))
     }
 
     /// Defaults come from each engine's documented convention, not from the UI's imagination.
@@ -118,7 +131,7 @@ struct GameSetupView: View {
     }
 }
 
-private struct BestBallTeamPicker: View {
+struct BestBallTeamPicker: View {
     @Bindable var model: NewRoundModel
 
     var body: some View {
@@ -163,9 +176,13 @@ private struct GameSelectionRow: View {
     let isSelected: Bool
     @Binding var stake: Decimal
     let holeCount: Int
+    @FocusState.Binding var focusedStake: GameType?
     let onToggle: () -> Void
     @State private var stakeText: String = ""
-    @FocusState private var isStakeFocused: Bool
+
+    /// The stakes golfers actually name out loud on the first tee. Tapping one is the fast path;
+    /// the field stays free-form for the groups that play for $2 or $50.
+    private static let quickStakes: [Decimal] = [1, 2, 5, 10, 20]
 
     /// A rough "worst case" unit multiplier per game, so the exposure row is an honest estimate
     /// rather than a made-up number. Nassau is the one figure golfers actually agree on — stake ×
@@ -220,32 +237,58 @@ private struct GameSelectionRow: View {
                             TextField("0", text: $stakeText)
                                 .keyboardType(.decimalPad)
                                 .multilineTextAlignment(.trailing)
-                                .focused($isStakeFocused)
+                                .focused($focusedStake, equals: metadata.gameType)
                                 .frame(width: 56)
                                 .onChange(of: stakeText) { _, newValue in
-                                    stake = Decimal(string: newValue) ?? stake
+                                    stake = newValue.isEmpty ? 0 : (Decimal(string: newValue) ?? stake)
                                 }
                         }
                         .font(RoundPlayFont.plexMono(15, .semiBold))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
-                        .background(Capsule().fill(RoundPlayColors.fillSecondary))
-                        .onTapGesture { isStakeFocused = true }
+                        .background(
+                            Capsule()
+                                .fill(RoundPlayColors.fillSecondary)
+                                .overlay(
+                                    Capsule().strokeBorder(
+                                        RoundPlayColors.accent,
+                                        lineWidth: focusedStake == metadata.gameType ? 2 : 0
+                                    )
+                                )
+                        )
+                        .contentShape(Capsule())
+                        .onTapGesture { focusedStake = metadata.gameType }
                     }
                 }
 
-                if metadata.gameType != .strokePlay { HStack {
-                    RoundPlayTypography.eyebrow("Up For Grabs")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    RoundPlayTypography.money(maxExposure.formatted(.currency(code: "USD")), size: 14)
-                        .foregroundStyle(.secondary)
-                } }
+                if metadata.gameType != .strokePlay {
+                    HStack(spacing: 6) {
+                        ForEach(Self.quickStakes, id: \.self) { amount in
+                            ChipButton(
+                                title: "$\(amount.formatted(.number.precision(.fractionLength(0))))",
+                                isSelected: stake == amount
+                            ) {
+                                stakeText = amount.formatted(.number.precision(.fractionLength(0)))
+                                stake = amount
+                                focusedStake = nil
+                            }
+                        }
+                        Spacer(minLength: 0)
+                    }
+
+                    HStack {
+                        RoundPlayTypography.eyebrow("Up For Grabs")
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        RoundPlayTypography.money(maxExposure.formatted(.currency(code: "USD")), size: 14)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
         }
         .padding(.vertical, 4)
         .onAppear {
-            stakeText = stake.formatted(.number.precision(.fractionLength(0...2)))
+            stakeText = stake == 0 ? "" : stake.formatted(.number.precision(.fractionLength(0...2)))
         }
     }
 }

@@ -16,6 +16,7 @@ private func log(_ scores: [(Int, UUID, Int)]) -> [ScoreEvent] {
 
 @Test("Stroke play totals net scores and has no money by default")
 func strokePlayTotals() {
+    #expect(StrokePlayEngine.playerRange.contains(1))
     let state = RoundState(log: log([(1, ca, 4), (1, cb, 5), (2, ca, 4), (2, cb, 6)]), seats: seats([ca, cb]), course: .testPar72)
     let result = StrokePlayEngine.settle(state: state, config: StrokePlayConfig(scoreType: .gross))
     #expect(result.points(for: ca) == 8)

@@ -84,10 +84,10 @@ struct RoundBuilderContinueButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(RoundPlayFont.archivo(17, .semiBold))
+                .font(RoundPlayFont.archivo(20, .bold))
                 .frame(maxWidth: .infinity, minHeight: 50)
         }
-        .buttonStyle(.borderedProminent)
+        .roundPlayPrimaryButtonStyle()
         .tint(RoundPlayColors.accent)
         .disabled(!isEnabled)
         .padding(.horizontal, 24)
@@ -222,6 +222,23 @@ private struct OptionalStrokeBorder: ViewModifier {
 }
 
 extension View {
+    /// Board-surfaced card (the near-black featured cards: in-progress round, round summary hero).
+    ///
+    /// `board` is a fixed near-black, and dark mode's page background is pure black — so without a
+    /// hairline edge these cards lose almost all separation from the page and read as a floating
+    /// block of text rather than a card. The border is tuned to be near-invisible on light mode's
+    /// cream page, where the fill already does the separating.
+    func boardCard(cornerRadius: CGFloat = 16) -> some View {
+        background(
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(RoundPlayColors.board)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .strokeBorder(RoundPlayColors.paperOnBoard.opacity(0.12), lineWidth: 1)
+        )
+    }
+
     /// Apply a rounded themed fill (and optional hairline border) to a view.
     func themedCard(
         cornerRadius: CGFloat,

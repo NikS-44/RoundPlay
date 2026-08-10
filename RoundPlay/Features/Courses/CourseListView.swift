@@ -22,8 +22,12 @@ struct CourseListView: View {
     @State private var catalogCourseToVerify: OpenGolfCourse?
 
     /// False when reused as a standalone "change the course" sheet (e.g. Play Again) rather than
-    /// step 1 of the round builder — hides the "Step 1 of 6" chrome that wouldn't make sense there.
+    /// step 1 of the round builder — hides the step chrome that wouldn't make sense there.
     var showsStepHeader: Bool = true
+    /// Supplied by the round builder from `NewRoundModel`, which is the only thing that knows how
+    /// many steps this particular round actually has.
+    var stepNumber: Int = 1
+    var totalSteps: Int = 6
     let onSelect: (CourseRecord) -> Void
 
     private var searchResults: [OpenGolfCourse] {
@@ -72,7 +76,7 @@ struct CourseListView: View {
     var body: some View {
         RoundPlayList.plain {
             if showsStepHeader {
-                RoundBuilderStepHeader(step: 1, totalSteps: 6, title: "What course are you playing?")
+                RoundBuilderStepHeader(step: stepNumber, totalSteps: totalSteps, title: "What course are you playing?")
             }
 
             HStack(spacing: 8) {
@@ -288,6 +292,23 @@ struct CourseListView: View {
             onSelect(existing)
             return
         }
+
+        if course.hasCompleteScorecard {
+            // Complete catalog scorecards are already safe for net scoring, so don't make the
+            // user re-enter 36 values. Sparse records still take the review path below.
+            let prepared = CourseEntryModel(prefilledFrom: course)
+            let record = CourseRecord(
+                name: prepared.name,
+                pars: prepared.pars,
+                strokeIndexes: prepared.strokeIndexes,
+                openGolfID: course.id
+            )
+            modelContext.insert(record)
+            try? modelContext.save()
+            onSelect(record)
+            return
+        }
+
         catalogCourseToVerify = course
     }
 

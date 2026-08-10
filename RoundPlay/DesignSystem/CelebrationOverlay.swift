@@ -71,6 +71,11 @@ private struct CelebrationView: View {
             Text(event.word)
                 .font(.system(size: 68, weight: .heavy, design: .rounded))
                 .foregroundStyle(.white)
+                // 68pt is sized for a single short word; scale rather than clip if a caller ever
+                // passes something longer than "CASHED".
+                .lineLimit(1)
+                .minimumScaleFactor(0.4)
+                .padding(.horizontal, 24)
                 .shadow(color: .black.opacity(0.35), radius: 12, y: 4)
                 .scaleEffect(hideWord ? 1.15 : (showWord ? 1 : 0.55))
                 .opacity(hideWord ? 0 : (showWord ? 1 : 0))

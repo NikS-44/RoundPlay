@@ -20,7 +20,7 @@ struct OnboardingFlowView: View {
     @State private var handicap: Double?
     @State private var favorites: [OpenGolfCourse] = []
 
-    private enum Step: Hashable { case handicap, favorites, finish }
+    private enum Step: Hashable { case handicap, pitch, favorites, finish }
 
     private var fullName: String {
         [firstName, lastName]
@@ -35,7 +35,11 @@ struct OnboardingFlowView: View {
                 .navigationDestination(for: Step.self) { step in
                     switch step {
                     case .handicap:
-                        OnboardingHandicapStep(handicap: $handicap) { path.append(Step.favorites) }
+                        OnboardingHandicapStep(handicap: $handicap) { path.append(Step.pitch) }
+                    case .pitch:
+                        OnboardingPitchStep(name: firstName.trimmingCharacters(in: .whitespaces)) {
+                            path.append(Step.favorites)
+                        }
                     case .favorites:
                         OnboardingFavoritesStep(favorites: $favorites) { path.append(Step.finish) }
                     case .finish:
@@ -137,10 +141,10 @@ private struct OnboardingNameStep: View {
 
             Button(action: onContinue) {
                 Text("Next")
-                    .font(RoundPlayFont.archivo(17, .semiBold))
+                    .font(RoundPlayFont.archivo(20, .bold))
                     .frame(maxWidth: .infinity, minHeight: 50)
             }
-            .buttonStyle(.borderedProminent)
+            .roundPlayPrimaryButtonStyle()
             .tint(RoundPlayColors.accent)
             .disabled(trimmedFirst.isEmpty)
             .padding(.horizontal, 24)
@@ -191,10 +195,10 @@ private struct OnboardingHandicapStep: View {
 
             Button(action: onContinue) {
                 Text("Next")
-                    .font(RoundPlayFont.archivo(17, .semiBold))
+                    .font(RoundPlayFont.archivo(20, .bold))
                     .frame(maxWidth: .infinity, minHeight: 50)
             }
-            .buttonStyle(.borderedProminent)
+            .roundPlayPrimaryButtonStyle()
             .tint(RoundPlayColors.accent)
             .padding(.horizontal, 24)
         }
@@ -202,7 +206,122 @@ private struct OnboardingHandicapStep: View {
     }
 }
 
-// MARK: - Step 3: favorite courses
+// MARK: - Step 3: what this app actually does for you
+
+/// The one screen that earns the rest of the flow. It lands right after we've asked for a name and
+/// a handicap — the moment a skeptical user is most entitled to ask "and what do I get for that?"
+///
+/// Deliberately left-aligned and editorial rather than centered like the question steps: this beat
+/// is us talking, not us asking, and the typed headline paces it so the value props land one at a
+/// time instead of arriving as a wall of bullets. Tapping anywhere skips straight to the end for
+/// anyone who doesn't want to be paced.
+private struct OnboardingPitchStep: View {
+    let name: String
+    let onContinue: () -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var revealedRows = 0
+
+    private struct Pitch: Identifiable {
+        var id: String { icon }
+        let icon: String
+        let title: String
+        let detail: String
+    }
+
+    /// Written for a foursome playing for money, not for the App Store listing — each line names
+    /// the specific chore we take off them.
+    private let pitches: [Pitch] = [
+        Pitch(
+            icon: "flag.2.crossed.fill",
+            title: "Every game you actually play",
+            detail: "Nassau, Skins, Wolf, Bingo Bango Bongo and more — scored hole by hole as you go."
+        ),
+        Pitch(
+            icon: "figure.golf",
+            title: "Strokes sorted for you",
+            detail: "Handicaps applied on the right holes, automatically. Nothing to argue about on the tee box."
+        ),
+        Pitch(
+            icon: "dollarsign.circle.fill",
+            title: "Nobody settles up by hand",
+            detail: "We total the bets and tell you exactly who owes who — before you reach the parking lot."
+        )
+    ]
+
+    private var headline: String {
+        name.isEmpty ? "Here's what we'll handle." : "Here's what we'll handle, \(name)."
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Spacer(minLength: 12)
+
+            TypewriterText(headline) {
+                revealRows()
+            }
+            .font(RoundPlayFont.archivo(34, .black))
+            .tracking(-1)
+            .padding(.horizontal, 28)
+
+            Spacer(minLength: 24)
+
+            VStack(alignment: .leading, spacing: 22) {
+                ForEach(Array(pitches.enumerated()), id: \.element.id) { index, pitch in
+                    HStack(alignment: .top, spacing: 14) {
+                        Image(systemName: pitch.icon)
+                            .font(.system(size: 22))
+                            .foregroundStyle(RoundPlayColors.accent)
+                            .frame(width: 30, alignment: .center)
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(pitch.title)
+                                .font(RoundPlayFont.archivo(17, .bold))
+                            Text(pitch.detail)
+                                .font(RoundPlayFont.archivo(15))
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .opacity(index < revealedRows ? 1 : 0)
+                    .offset(y: index < revealedRows ? 0 : 10)
+                }
+            }
+            .padding(.horizontal, 28)
+
+            Spacer()
+            Spacer()
+
+            Button(action: onContinue) {
+                Text("Next")
+                    .font(RoundPlayFont.archivo(20, .bold))
+                    .frame(maxWidth: .infinity, minHeight: 50)
+            }
+            .roundPlayPrimaryButtonStyle()
+            .tint(RoundPlayColors.accent)
+            .padding(.horizontal, 24)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.bottom, 24)
+        .contentShape(Rectangle())
+        .onTapGesture { revealAllNow() }
+    }
+
+    private func revealRows() {
+        guard !reduceMotion else { return revealAllNow() }
+        for index in pitches.indices {
+            withAnimation(.easeOut(duration: 0.45).delay(Double(index) * 0.22)) {
+                revealedRows = index + 1
+            }
+        }
+    }
+
+    private func revealAllNow() {
+        withAnimation(.easeOut(duration: 0.2)) { revealedRows = pitches.count }
+    }
+}
+
+// MARK: - Step 4: favorite courses
 
 private struct OnboardingFavoritesStep: View {
     @Binding var favorites: [OpenGolfCourse]
@@ -298,10 +417,10 @@ private struct OnboardingFavoritesStep: View {
         .safeAreaInset(edge: .bottom) {
             Button(action: onContinue) {
                 Text(favorites.isEmpty ? "Skip" : "Next")
-                    .font(RoundPlayFont.archivo(17, .semiBold))
+                    .font(RoundPlayFont.archivo(20, .bold))
                     .frame(maxWidth: .infinity, minHeight: 50)
             }
-            .buttonStyle(.borderedProminent)
+            .roundPlayPrimaryButtonStyle()
             .tint(RoundPlayColors.accent)
             .padding(.horizontal, 24)
             .padding(.vertical, 12)
@@ -322,7 +441,7 @@ private struct OnboardingFavoritesStep: View {
     }
 }
 
-// MARK: - Step 4: explore or play
+// MARK: - Step 5: explore or play
 
 private struct OnboardingFinishStep: View {
     let name: String
@@ -350,7 +469,7 @@ private struct OnboardingFinishStep: View {
                     .font(RoundPlayFont.archivo(17, .semiBold))
                     .frame(maxWidth: .infinity, minHeight: 50)
             }
-            .buttonStyle(.borderedProminent)
+            .roundPlayPrimaryButtonStyle()
             .tint(RoundPlayColors.accent)
             .padding(.horizontal, 24)
 

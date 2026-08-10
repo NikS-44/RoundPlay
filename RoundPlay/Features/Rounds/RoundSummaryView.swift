@@ -142,8 +142,7 @@ struct RoundSummaryView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
-        .background(RoundPlayColors.board)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .boardCard(cornerRadius: 20)
         .listRowInsets(EdgeInsets())
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)

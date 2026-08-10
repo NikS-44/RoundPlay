@@ -50,7 +50,7 @@ struct GameDetailView: View {
                         .font(RoundPlayFont.archivo(17, .semiBold))
                         .frame(maxWidth: .infinity, minHeight: 50)
                 }
-                .buttonStyle(.borderedProminent)
+                .roundPlayPrimaryButtonStyle()
                 .tint(RoundPlayColors.accent)
                 .padding(.top, 8)
             }

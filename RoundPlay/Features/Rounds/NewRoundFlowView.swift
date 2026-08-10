@@ -17,16 +17,24 @@ struct NewRoundFlowView: View {
     var startingCourse: CourseRecord?
     let onStart: (RoundRecord) -> Void
 
-    private enum Step: Hashable { case playerCount, knownPlayers, fillRemaining, holes, games }
+    private enum Step: Hashable { case playerCount, knownPlayers, fillRemaining, holes, games, bestBallTeams }
 
     var body: some View {
         NavigationStack(path: $path) {
             Group {
                 if let startingCourse {
                     PlayerCountStep(model: model) { path.append(Step.knownPlayers) }
-                        .onAppear { model.course = startingCourse }
+                        .onAppear {
+                            model.course = startingCourse
+                            // Onboarding already picked the course, so the course step never
+                            // renders — tell the model so every later step's "of N" drops it.
+                            model.skipsCourseStep = true
+                        }
                 } else {
-                    CourseListView { course in
+                    CourseListView(
+                        stepNumber: model.stepNumber(for: .course),
+                        totalSteps: model.totalSteps
+                    ) { course in
                         model.course = course
                         path.append(Step.playerCount)
                     }
@@ -52,7 +60,19 @@ struct NewRoundFlowView: View {
                 case .holes:
                     HoleSegmentStep(model: model) { path.append(Step.games) }
                 case .games:
-                    GameSetupView(model: model, onStart: start)
+                    GameSetupView(
+                        model: model,
+                        onStart: {
+                            if model.configurations.contains(where: { $0.gameType == .bestBall }) {
+                                path.append(Step.bestBallTeams)
+                            } else {
+                                start()
+                            }
+                        },
+                        continueButtonTitle: model.configurations.contains(where: { $0.gameType == .bestBall }) ? "Next" : "Start Round"
+                    )
+                case .bestBallTeams:
+                    BestBallTeamsStep(model: model, onStart: start)
                 }
             }
             .toolbar {
@@ -100,6 +120,35 @@ struct NewRoundFlowView: View {
     }
 }
 
+/// Best Ball's partner assignment is a separate decision from choosing the wager itself.
+private struct BestBallTeamsStep: View {
+    @Bindable var model: NewRoundModel
+    let onStart: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            RoundPlayList.plain {
+                RoundBuilderStepHeader(
+                    step: model.stepNumber(for: .bestBallTeams),
+                    totalSteps: model.totalSteps,
+                    title: "Set Best Ball teams",
+                    detail: "4 players"
+                )
+
+                BestBallTeamPicker(model: model)
+            }
+
+            RoundBuilderContinueButton(
+                title: "Start Round",
+                isEnabled: model.canStart,
+                action: onStart
+            )
+        }
+        .navigationTitle("Best Ball Teams")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
 // MARK: - Step 2a: how many
 
 /// One job: how many seats. Nothing else on the screen to look at.
@@ -113,7 +162,11 @@ private struct PlayerCountStep: View {
         // no matter which step is showing, instead of this one floating vertically centered.
         VStack(spacing: 0) {
             RoundPlayList.plain {
-                RoundBuilderStepHeader(step: 2, totalSteps: 6, title: "How many players?")
+                RoundBuilderStepHeader(
+                    step: model.stepNumber(for: .playerCount),
+                    totalSteps: model.totalSteps,
+                    title: "How many players?"
+                )
 
                 HStack(spacing: 28) {
                     Spacer()
@@ -124,7 +177,7 @@ private struct PlayerCountStep: View {
                             .font(.system(size: 40))
                     }
                     .buttonStyle(.plain)
-                    .disabled(model.playerCount <= 2)
+                    .disabled(model.playerCount <= 1)
 
                     RoundPlayTypography.hero("\(model.playerCount)")
                         .frame(minWidth: 80)
@@ -150,6 +203,7 @@ private struct PlayerCountStep: View {
 
             RoundBuilderContinueButton(title: "Next", action: onContinue)
         }
+        .sensoryFeedback(RoundPlayHaptics.selection, trigger: model.playerCount)
         .navigationTitle("Players")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -182,8 +236,8 @@ private struct KnownPlayersStep: View {
         VStack(spacing: 0) {
             RoundPlayList.plain {
                 RoundBuilderStepHeader(
-                    step: 3,
-                    totalSteps: 6,
+                    step: model.stepNumber(for: .knownPlayers),
+                    totalSteps: model.totalSteps,
                     title: "Anybody from your roster?",
                     detail: "\(selectedCount) of \(model.playerCount) selected"
                 )
@@ -226,6 +280,7 @@ private struct KnownPlayersStep: View {
 
             RoundBuilderContinueButton(title: "Next", action: onContinue)
         }
+        .sensoryFeedback(RoundPlayHaptics.selection, trigger: selectedCount)
         .navigationTitle("From Your Roster")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -258,7 +313,11 @@ private struct FillRemainingStep: View {
     var body: some View {
         VStack(spacing: 0) {
             RoundPlayList.plain {
-                RoundBuilderStepHeader(step: 4, totalSteps: 6, title: "Add other players")
+                RoundBuilderStepHeader(
+                    step: model.stepNumber(for: .fillRemaining),
+                    totalSteps: model.totalSteps,
+                    title: "Add other players"
+                )
 
                 Section {
                     ForEach(Array(model.seats.enumerated()), id: \.element.id) { index, seat in
@@ -326,7 +385,11 @@ private struct HoleSegmentStep: View {
     var body: some View {
         VStack(spacing: 0) {
             RoundPlayList.plain {
-                RoundBuilderStepHeader(step: 5, totalSteps: 6, title: "How many holes are you playing?")
+                RoundBuilderStepHeader(
+                    step: model.stepNumber(for: .holes),
+                    totalSteps: model.totalSteps,
+                    title: "How many holes are you playing?"
+                )
 
                 HStack(spacing: 10) {
                     ForEach(options, id: \.self) { segment in
@@ -444,6 +507,7 @@ struct SeatAssignmentSheet: View {
     @Bindable var model: NewRoundModel
     let seat: RoundSeatDraft
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
 
     @Query(sort: [SortDescriptor(\PlayerRecord.playCount, order: .reverse),
                   SortDescriptor(\PlayerRecord.name)])
@@ -498,19 +562,29 @@ struct SeatAssignmentSheet: View {
                         dismiss()
                     } label: {
                         Text("Save")
-                            .font(RoundPlayFont.archivo(17, .semiBold))
+                            .font(RoundPlayFont.archivo(19, .bold))
                             .frame(maxWidth: .infinity, minHeight: 50)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .roundPlayPrimaryButtonStyle()
                     .tint(RoundPlayColors.accent)
                     .disabled(trimmedFullName.isEmpty)
+
+                    if seat.assignedPlayer == nil {
+                        Button {
+                            saveAndAddToRoster()
+                        } label: {
+                            Text("Save and Add to Roster")
+                                .font(RoundPlayFont.archivo(15, .semiBold))
+                                .frame(maxWidth: .infinity, minHeight: 42)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(.secondary)
+                        .disabled(trimmedFullName.isEmpty)
+                    }
                 }
                 .listRowSeparator(.hidden)
             } header: {
                 RoundPlayTypography.eyebrow("Who's in this seat?")
-                    .foregroundStyle(.secondary)
-            } footer: {
-                RoundPlayTypography.caption("Saves to your roster — next round, they're one tap away.")
                     .foregroundStyle(.secondary)
             }
 
@@ -564,6 +638,15 @@ struct SeatAssignmentSheet: View {
                 lastName = parts.count > 1 ? String(parts[1]) : ""
             }
         }
+    }
+
+    private func saveAndAddToRoster() {
+        seat.rename(to: trimmedFullName, handicap: seat.guestHandicap, addToRoster: true)
+        let record = PlayerRecord(name: trimmedFullName, handicapIndex: seat.guestHandicap)
+        modelContext.insert(record)
+        seat.assign(to: record)
+        try? modelContext.save()
+        dismiss()
     }
 }
 

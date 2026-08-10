@@ -66,13 +66,21 @@ struct SettleUpSheet: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(payment.debtorName)
                     .font(RoundPlayFont.archivo(19, .bold))
-                Text("owes \(payment.creditorName)")
-                    .font(RoundPlayFont.archivo(16, .semiBold))
-                    .foregroundStyle(.primary.opacity(0.7))
+                HStack(spacing: 5) {
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(RoundPlayColors.accent)
+                    Text(payment.creditorName)
+                        .font(RoundPlayFont.archivo(16, .semiBold))
+                        .foregroundStyle(.primary.opacity(0.7))
+                }
             }
             Spacer()
+            // Deliberately *not* red. A payment isn't a loss — half the people reading this sheet
+            // are collecting — and a column of red amounts made settling up look like a problem
+            // to fix rather than the good part of the round.
             RoundPlayTypography.money(payment.amount.formatted(.currency(code: "USD")), size: 21)
-                .foregroundStyle(RoundPlayColors.moneyNegative)
+                .foregroundStyle(.primary)
         }
         .padding(.vertical, 6)
         .roundPlayListRowSeparatorFullWidth()

@@ -36,6 +36,9 @@ struct ScoreStripView: View {
             }
             .scrollTargetBehavior(.viewAligned)
             .frame(height: 52)
+            // The most-repeated interaction in the app — a score landing should feel like it
+            // landed, not like a silent state change somewhere off screen.
+            .sensoryFeedback(RoundPlayHaptics.selection, trigger: selected)
             .onAppear {
                 // Land on today's score if there is one, otherwise the group's shared expected
                 // score — every player's carousel opens at the same position so they line up

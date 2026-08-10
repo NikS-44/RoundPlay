@@ -151,7 +151,9 @@ private struct ShareableRoundCard: View {
             }
         }
         .padding(24)
-        .frame(width: 620, alignment: .leading)
+        // The full 18-hole grid is 1,064pt wide before padding (label column, 18 holes,
+        // OUT/IN/TOT columns). A narrower frame silently clips the back nine in ImageRenderer.
+        .frame(width: 1120, alignment: .leading)
         .background(Color.white)
         .environment(\.colorScheme, .light)
     }

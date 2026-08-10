@@ -43,6 +43,16 @@ struct OpenGolfCourse: Identifiable, Sendable, Equatable, Decodable {
         }
     }
 
+    /// A catalog record is safe to use without manual verification only when it contains a
+    /// complete, valid scorecard. Sparse records are still useful for search, but their missing
+    /// values must not be silently replaced with placeholders before net scoring.
+    var hasCompleteScorecard: Bool {
+        holePars.count == 18
+            && holePars.allSatisfy { par in par.map { (3...6).contains($0) } ?? false }
+            && holeHandicaps.count == 18
+            && Set(holeHandicaps.compactMap { $0 }) == Set(1...18)
+    }
+
     /// Decodes from the bundled `opengolfapi-us.json`, which stores each course as a positional
     /// array (not keyed fields) to keep the bundle small and decoding fast — field names would
     /// otherwise repeat ~15,700 times over. Column order is fixed by the export script; see

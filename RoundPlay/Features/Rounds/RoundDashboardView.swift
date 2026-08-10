@@ -161,7 +161,7 @@ private struct SettleUpStub: View {
     var body: some View {
         VStack(spacing: 6) {
             Button("Settle Up") {}
-                .buttonStyle(.borderedProminent)
+                .roundPlayPrimaryButtonStyle()
                 .disabled(true)
             RoundPlayTypography.caption("Coming soon — for now, settle up however you normally do.")
                 .foregroundStyle(RoundPlayColors.moneyDisabled)

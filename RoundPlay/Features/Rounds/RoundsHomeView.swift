@@ -36,8 +36,12 @@ struct RoundsHomeView: View {
     /// or purged for good. Nothing calls `modelContext.delete(_:)` on a round outside that screen.
     private func delete(_ round: RoundRecord) {
         if activeRound?.id == round.id { activeRound = nil }
-        round.deletedAt = Date()
-        try? modelContext.save()
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            round.deletedAt = Date()
+            try? modelContext.save()
+        }
     }
 
     var body: some View {
@@ -74,37 +78,39 @@ struct RoundsHomeView: View {
             if !earlier.isEmpty {
                 Section {
                     ForEach(earlier) { round in
-                        VStack(spacing: 0) {
+                        VStack(spacing: 8) {
                             roundLink(round) {
                                 EarlierRoundRow(round: round, course: course(for: round))
                             }
 
                             HStack {
+                                // A capsule chip, not an underlined text link — underlines read as
+                                // web chrome and made the busiest row on the home screen look
+                                // unfinished next to everything else in the app.
                                 Button {
                                     guard courseRecord(for: round) != nil else { return }
                                     playAgainSource = round
                                 } label: {
-                                    HStack(spacing: 10) {
-                                        Image(systemName: "arrow.clockwise.circle.fill")
-                                            .font(.title3)
-                                            .foregroundStyle(RoundPlayColors.accent)
+                                    HStack(spacing: 5) {
+                                        Image(systemName: "arrow.clockwise")
+                                            .font(.system(size: 11, weight: .bold))
                                         Text("Play Again")
-                                            .font(RoundPlayFont.archivo(15, .semiBold))
-                                            .foregroundStyle(RoundPlayColors.accent)
-                                            .underline()
+                                            .font(RoundPlayFont.archivo(13, .semiBold))
                                     }
-                                    // Hit slop around just the icon+text, not the whole row —
-                                    // the empty space to the right shouldn't also trigger this.
-                                    .padding(.vertical, 6)
-                                    .contentShape(Rectangle())
+                                    .foregroundStyle(RoundPlayColors.accent)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 7)
+                                    .background(
+                                        Capsule().strokeBorder(RoundPlayColors.accent.opacity(0.45), lineWidth: 1)
+                                    )
+                                    .contentShape(Capsule())
                                 }
                                 .buttonStyle(.plain)
 
                                 Spacer()
                             }
-                            .padding(.top, 8)
                         }
-                        .padding(.bottom, 4)
+                        .padding(.vertical, 6)
                         .roundPlayListRowSeparatorFullWidth()
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) {
@@ -121,6 +127,9 @@ struct RoundsHomeView: View {
                 }
             }
         }
+        // Without this the gap between the Start a Round CTA and "Previous Rounds" reads as a
+        // rendering gap rather than a section break.
+        .listSectionSpacing(.compact)
         .navigationTitle("Rounds")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -257,7 +266,7 @@ private struct InProgressRoundCard: View {
             }
         }
         .padding(18)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(RoundPlayColors.board))
+        .boardCard(cornerRadius: 16)
         .padding(.horizontal)
         .padding(.vertical, 6)
     }
@@ -282,12 +291,14 @@ private struct StartRoundEmptyState: View {
                     .font(RoundPlayFont.archivo(17, .semiBold))
                     .frame(maxWidth: .infinity, minHeight: 50)
             }
-            .buttonStyle(.borderedProminent)
+            .roundPlayPrimaryButtonStyle()
             .tint(RoundPlayColors.accent)
             .padding(.top, 4)
         }
         .frame(maxWidth: .infinity)
-        .padding(24)
+        .padding(.horizontal, 24)
+        .padding(.top, 16)
+        .padding(.bottom, 8)
     }
 }
 
@@ -300,7 +311,7 @@ private struct HoleProgressDots: View {
         HStack(spacing: 4) {
             ForEach(1...totalHoles, id: \.self) { hole in
                 Capsule()
-                    .fill(hole <= holesPlayed ? Color(red: 0.31, green: 0.74, blue: 0.53) : RoundPlayColors.paperOnBoard.opacity(0.15))
+                    .fill(hole <= holesPlayed ? RoundPlayColors.moneyPositiveOnBoard : RoundPlayColors.paperOnBoard.opacity(0.15))
                     .frame(width: 7, height: 7)
             }
         }
@@ -313,10 +324,14 @@ private struct EarlierRoundRow: View {
     let round: RoundRecord
     let course: Course?
 
+    /// `nil` when this round had no money games at all — a friendly round shouldn't advertise a
+    /// meaningless "+$0.00" in the same slot where a real result goes.
     private var net: Decimal? {
         guard let course, let scorekeeper = round.orderedSeats.first else { return nil }
-        return EngineBridge.settlements(for: round, course: course)
-            .reduce(Decimal(0)) { $0 + $1.money(for: scorekeeper.playerID) }
+        let moneyGames = EngineBridge.settlements(for: round, course: course)
+            .filter { $0.gameType != .strokePlay }
+        guard !moneyGames.isEmpty else { return nil }
+        return moneyGames.reduce(Decimal(0)) { $0 + $1.money(for: scorekeeper.playerID) }
     }
 
     private var playerNames: String {
@@ -325,16 +340,15 @@ private struct EarlierRoundRow: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 RoundPlayTypography.headline(round.courseName)
-                Text(playerNames)
+                // Players and date share a line — three stacked lines per round made the list
+                // scroll twice as far for the same information.
+                Text("\(playerNames) · \(round.startedAt.formatted(.dateTime.month(.abbreviated).day()))")
                     .font(RoundPlayFont.archivo(13))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.tail)
-                Text(round.startedAt, style: .date)
-                    .font(RoundPlayFont.archivo(12))
-                    .foregroundStyle(.tertiary)
             }
             Spacer()
             if let net {

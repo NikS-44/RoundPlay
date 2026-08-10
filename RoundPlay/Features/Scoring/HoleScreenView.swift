@@ -23,6 +23,10 @@ struct HoleScreenView: View {
     @State private var isJumpingToHole = false
     @State private var isEditingWolf = false
     @State private var lastScore: (hole: Int, playerID: UUID)?
+    /// Bumped every time Finish Round is refused for missing scores. Only exists so the warning
+    /// haptic fires once per *attempt* — keying it off `showsIncompleteWarning` would also buzz
+    /// when the banner is dismissed.
+    @State private var blockedFinishAttempts = 0
 
     init(
         round: RoundRecord,
@@ -92,6 +96,13 @@ struct HoleScreenView: View {
         holeRange.filter { !isHoleComplete($0) }
     }
 
+    private var previousNavigationHole: Int? {
+        if isFixingIncompleteHoles {
+            return incompleteHoles.last(where: { $0 < hole })
+        }
+        return hole > holeRange.lowerBound ? hole - 1 : nil
+    }
+
     private var requiredInputs: Set<InputKind> {
         (round.games ?? []).reduce(into: Set<InputKind>()) { partial, game in
             guard let type = game.gameType else { return }
@@ -134,7 +145,8 @@ struct HoleScreenView: View {
             )
 
             if showsIncompleteWarning && !isHoleComplete(hole) {
-                IncompleteHoleBanner()
+                IncompleteHoleBanner(needsHoleEvents: requiredInputs.contains(.holeEvents))
+                    .transition(.move(edge: .top).combined(with: .opacity))
             }
 
             ScrollViewReader { scrollProxy in
@@ -166,6 +178,11 @@ struct HoleScreenView: View {
                                     ) { strokes in
                                         record(strokes: strokes, for: seat)
                                     }
+                                    // Rebuild per hole so the carousel re-centers on the new
+                                    // hole's expected score. Without this the view identity is
+                                    // just the seat, so `onAppear` never fires again and hole 2
+                                    // opens still scrolled to wherever hole 1 was left.
+                                    .id(hole)
                                     if isPostCompletionEdit, state.gross(hole: hole, player: seat.playerID) != nil {
                                         Button("Clear") { clearScore(for: seat) }
                                             .font(RoundPlayFont.archivo(12, .semiBold))
@@ -183,6 +200,9 @@ struct HoleScreenView: View {
             }
             .onChange(of: hole) {
                 scrollProxy.scrollTo("top", anchor: .top)
+                // Undo is scoped to the score you just entered. Carrying it across holes meant
+                // tapping it on hole 5 silently wiped a score back on hole 3.
+                lastScore = nil
             }
             }
 
@@ -194,6 +214,7 @@ struct HoleScreenView: View {
                 totalCount: requiredEntryCount(for: hole),
                 isLastHole: isLastActionableHole,
                 isPostCompletionEdit: isPostCompletionEdit,
+                previousHoleIsIncomplete: previousNavigationHole.map { incompleteHoles.contains($0) } ?? false,
                 onPrevious: goToPreviousHole,
                 onNext: goToNextHole,
                 onFinish: finish
@@ -213,10 +234,14 @@ struct HoleScreenView: View {
                 }
             }
         }
+        // Refusing to finish and actually finishing are the two moments in a round worth feeling
+        // through a pocket — the phone is often already on its way back there when either lands.
+        .sensoryFeedback(RoundPlayHaptics.warning, trigger: blockedFinishAttempts)
+        .sensoryFeedback(RoundPlayHaptics.success, trigger: round.isComplete)
         .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
         .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
         .sheet(isPresented: $isJumpingToHole) {
-            HoleJumpSheet(hole: $hole, holeRange: holeRange)
+            HoleJumpSheet(hole: $hole, holeRange: holeRange, incompleteHoles: Set(incompleteHoles))
                 .presentationDetents([.height(300)])
                 .onDisappear {
                     showsIncompleteWarning = false
@@ -249,15 +274,32 @@ struct HoleScreenView: View {
             return
         }
         if let incomplete = firstIncompleteHole {
-            hole = incomplete
-            showsIncompleteWarning = true
+            withAnimation(.easeOut(duration: 0.25)) {
+                hole = incomplete
+                showsIncompleteWarning = true
+            }
             isFixingIncompleteHoles = true
+            blockedFinishAttempts += 1
             return
         }
         isFixingIncompleteHoles = false
         round.completedAt = Date()
         try? modelContext.save()
+        CelebrationCenter.shared.celebrate(completionWord)
         onFinished()
+    }
+
+    /// The word the fireworks land on. Keyed to the scorekeeper's own result because that's whose
+    /// phone this is — a round where you took money off your friends shouldn't read the same as
+    /// one where you paid out. One short word: the overlay renders it at 68pt.
+    private var completionWord: String {
+        guard let scorekeeper else { return "WRAPPED" }
+        let net = EngineBridge.settlements(for: round, course: course)
+            .filter { $0.gameType != .strokePlay }
+            .reduce(Decimal(0)) { $0 + $1.money(for: scorekeeper.playerID) }
+        if net > 0 { return "CASHED" }
+        if net < 0 { return "SETTLED" }
+        return "WRAPPED"
     }
 
     /// True once there's nothing left to fix but the hole on screen — the navigation bar shows
@@ -270,28 +312,34 @@ struct HoleScreenView: View {
     }
 
     private func goToPreviousHole() {
-        if isFixingIncompleteHoles, let target = incompleteHoles.last(where: { $0 < hole }) {
-            hole = target
-            showsIncompleteWarning = true
-        } else {
-            hole = max(holeRange.lowerBound, hole - 1)
-            showsIncompleteWarning = false
-            isFixingIncompleteHoles = false
+        withAnimation(.easeOut(duration: 0.25)) {
+            if isFixingIncompleteHoles, let target = incompleteHoles.last(where: { $0 < hole }) {
+                hole = target
+                showsIncompleteWarning = true
+            } else {
+                hole = max(holeRange.lowerBound, hole - 1)
+                showsIncompleteWarning = false
+                isFixingIncompleteHoles = false
+            }
         }
     }
 
     private func goToNextHole() {
         if isFixingIncompleteHoles {
             if let target = incompleteHoles.first(where: { $0 > hole }) {
-                hole = target
-                showsIncompleteWarning = true
+                withAnimation(.easeOut(duration: 0.25)) {
+                    hole = target
+                    showsIncompleteWarning = true
+                }
             } else {
                 // No incomplete hole left ahead — either this was the last gap (finish succeeds)
                 // or an earlier one still needs a score (finish jumps back to it).
                 finish()
             }
         } else {
-            hole = min(holeRange.upperBound, hole + 1)
+            withAnimation(.easeOut(duration: 0.25)) {
+                hole = min(holeRange.upperBound, hole + 1)
+            }
         }
     }
 
@@ -424,6 +472,7 @@ private struct HoleHeader: View {
                         .font(RoundPlayFont.archivo(44, .black))
                         .tracking(-2.2)
                         .foregroundStyle(RoundPlayColors.paperOnBoard)
+                        .contentTransition(.numericText())
                 }
                 .frame(minWidth: 96)
                 .padding(.horizontal, 14)
@@ -488,13 +537,21 @@ private struct HoleHeader: View {
 private struct HoleJumpSheet: View {
     @Binding var hole: Int
     let holeRange: ClosedRange<Int>
+    let incompleteHoles: Set<Int>
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
             Picker("Hole", selection: $hole) {
                 ForEach(Array(holeRange), id: \.self) { value in
-                    Text("Hole \(value)").tag(value)
+                    Label {
+                        Text("Hole \(value)")
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(RoundPlayColors.scoreOverPar)
+                            .opacity(incompleteHoles.contains(value) ? 1 : 0)
+                    }
+                    .tag(value)
                 }
             }
             .pickerStyle(.wheel)
@@ -511,11 +568,23 @@ private struct HoleJumpSheet: View {
 
 /// A red banner telling the scorekeeper exactly why Finish Round didn't work.
 private struct IncompleteHoleBanner: View {
+    /// Bingo Bango Bongo's three tallies count toward completeness too, so on those rounds "missing
+    /// a score" is only half the story and sends the scorekeeper hunting for a score that's
+    /// already there.
+    let needsHoleEvents: Bool
+
+    private var message: String {
+        needsHoleEvents
+            ? "This hole isn't finished — every player needs a score, and each tally needs a winner."
+            : "This hole is missing a score — enter every player before finishing."
+    }
+
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill")
-            Text("This hole is missing a score — enter every player before finishing.")
+            Text(message)
                 .font(RoundPlayFont.archivo(13, .semiBold))
+                .fixedSize(horizontal: false, vertical: true)
         }
         .foregroundStyle(.white)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -535,6 +604,7 @@ private struct HoleNavigationBar: View {
     let totalCount: Int
     let isLastHole: Bool
     let isPostCompletionEdit: Bool
+    let previousHoleIsIncomplete: Bool
     let onPrevious: () -> Void
     let onNext: () -> Void
     let onFinish: () -> Void
@@ -555,8 +625,8 @@ private struct HoleNavigationBar: View {
 
             HStack(spacing: 10) {
                 Button(action: onPrevious) {
-                    Label("Previous Hole", systemImage: "chevron.left")
-                        .font(RoundPlayFont.archivo(17, .semiBold))
+                    Label("Previous Hole", systemImage: previousHoleIsIncomplete ? "exclamationmark.triangle.fill" : "chevron.left")
+                        .font(RoundPlayFont.archivo(18, .bold))
                         .frame(maxWidth: .infinity, minHeight: 52)
                 }
                 .buttonStyle(.bordered)
@@ -569,11 +639,11 @@ private struct HoleNavigationBar: View {
                             isPostCompletionEdit ? "Done" : "Finish Round",
                             systemImage: isComplete ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
                         )
-                            .font(RoundPlayFont.archivo(17, .semiBold))
+                            .font(RoundPlayFont.archivo(20, .bold))
                             .labelStyle(.trailingIcon)
                             .frame(maxWidth: .infinity, minHeight: 52)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .roundPlayPrimaryButtonStyle()
                     .tint(RoundPlayColors.accent)
                 } else {
                     // The warning is a small icon swap, not a color change — a fully orange
@@ -581,11 +651,11 @@ private struct HoleNavigationBar: View {
                     // when it's just an ordinary, expected part of entering scores.
                     Button(action: onNext) {
                         Label("Next Hole", systemImage: isComplete ? "chevron.right" : "exclamationmark.triangle.fill")
-                            .font(RoundPlayFont.archivo(17, .semiBold))
+                            .font(RoundPlayFont.archivo(20, .bold))
                             .labelStyle(.trailingIcon)
                             .frame(maxWidth: .infinity, minHeight: 52)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .roundPlayPrimaryButtonStyle()
                     .tint(RoundPlayColors.accent)
                 }
             }

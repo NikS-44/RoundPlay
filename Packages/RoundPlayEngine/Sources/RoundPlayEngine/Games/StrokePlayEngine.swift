@@ -25,7 +25,7 @@ public enum StrokePlayEngine: GameDescriptor {
     """
     public static let iconName = "number.circle.fill"
     public static let requiredInputs: Set<InputKind> = [.strokes]
-    public static let playerRange = 2...8
+    public static let playerRange = 1...8
 
     public static func settle(state: RoundState, config: StrokePlayConfig) -> Settlement {
         let holes = state.completedHoles(in: state.segment)
