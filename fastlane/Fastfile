@@ -9,8 +9,9 @@ platform :ios do
   lane :beta do
     # RoundPlay.xcodeproj is generated from project.yml via xcodegen, not
     # checked into git — regenerate it first so the archive reflects the
-    # current source tree.
-    sh("xcodegen generate")
+    # current source tree. `sh` runs relative to the fastlane/ directory,
+    # so step up to the repo root first.
+    sh("cd .. && xcodegen generate")
 
     # Every TestFlight upload needs a unique build number, otherwise Apple
     # rejects it. A timestamp (YYYYMMDDHHMM) guarantees uniqueness with no
