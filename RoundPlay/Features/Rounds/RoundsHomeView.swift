@@ -397,8 +397,13 @@ struct RoundTabsView: View {
 
     private var shareItems: [Any] {
         var items: [Any] = [RoundShareContent.settlementSummaryText(round: round, course: course)]
-        if let scorecardShareImage {
-            items.insert(scorecardShareImage, at: 0)
+        // Falls back to rendering right now if the pre-generated one isn't there. `.task` warms
+        // this up so the sheet opens instantly, but the cached `@State` does not reliably survive
+        // until the sheet is built — SwiftUI was discarding it between the round appearing and
+        // Share being tapped, and the round shared as text with no picture at all. Rendering the
+        // card takes a few milliseconds, so the fallback is not worth avoiding.
+        if let image = scorecardShareImage ?? RoundShareContent.scorecardImage(round: round, course: course) {
+            items.insert(image, at: 0)
         }
         return items
     }

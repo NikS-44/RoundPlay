@@ -20,7 +20,12 @@ enum RoundShareContent {
     @MainActor
     static func scorecardImage(round: RoundRecord, course: Course) -> UIImage? {
         let renderer = ImageRenderer(content: ShareableRoundCard(round: round, course: course))
-        renderer.scale = UIScreen.main.scale
+        // Fixed 2x rather than `UIScreen.main.scale`: `UIScreen.main` is deprecated and not
+        // scene-aware, and if it ever hands back a zero scale `ImageRenderer` silently returns
+        // nil — which shipped as "Share posts the text but no picture". The card is ~600–1,100pt
+        // wide, so 2x is already sharper than any chat app will display it.
+        renderer.scale = 2
+        renderer.isOpaque = true
         return renderer.uiImage
     }
 
@@ -103,6 +108,15 @@ private struct ShareableRoundCard: View {
         RoundShareContent.settlementPayments(round: round, course: course)
     }
 
+    private var grid: ScorecardGrid {
+        ScorecardGrid(round: round, course: course, forSharing: true)
+    }
+
+    /// The money lists sit in their own narrow column rather than stretching to the grid's width.
+    /// Spanning the full card put half a screen of dead space between "Eric Palmer" and "$60.00",
+    /// which is unreadable at a glance and only gets worse on an 18-hole card.
+    private let moneyColumnWidth: CGFloat = 240
+
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             VStack(alignment: .leading, spacing: 2) {
@@ -114,7 +128,7 @@ private struct ShareableRoundCard: View {
                     .foregroundStyle(.black.opacity(0.6))
             }
 
-            ScorecardGrid(round: round, course: course, forSharing: true).flatGrid
+            grid.flatGrid
 
             if !netStandings.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
@@ -124,11 +138,12 @@ private struct ShareableRoundCard: View {
                             Text(entry.name)
                                 .font(RoundPlayFont.archivo(15, .semiBold))
                                 .foregroundStyle(.black)
-                            Spacer()
+                            Spacer(minLength: 16)
                             Text(entry.net.formatted(.currency(code: "USD").sign(strategy: .always())))
                                 .font(RoundPlayFont.plexMono(15, .semiBold))
                                 .foregroundStyle(entry.net > 0 ? RoundPlayColors.scoreUnderPar : entry.net < 0 ? RoundPlayColors.scoreOverPar : .black.opacity(0.6))
                         }
+                        .frame(width: moneyColumnWidth, alignment: .leading)
                     }
                 }
             }
@@ -137,23 +152,26 @@ private struct ShareableRoundCard: View {
                 VStack(alignment: .leading, spacing: 10) {
                     sectionLabel("Who Owes Who")
                     ForEach(payments) { payment in
-                        HStack {
-                            Text("\(payment.debtorName) → \(payment.creditorName)")
+                        // One plain-English sentence, sized to its own text. "Eric Palmer → Tilly"
+                        // with the amount pushed to the far edge made the reader join two things
+                        // separated by a hand's width of nothing; this reads in one pass.
+                        (
+                            Text("\(payment.debtorName) owes \(payment.creditorName) ")
                                 .font(RoundPlayFont.archivo(15, .semiBold))
-                                .foregroundStyle(.black)
-                            Spacer()
-                            Text(payment.amount.formatted(.currency(code: "USD")))
+                            + Text(payment.amount.formatted(.currency(code: "USD")))
                                 .font(RoundPlayFont.plexMono(15, .semiBold))
-                                .foregroundStyle(.black)
-                        }
+                        )
+                        .foregroundStyle(.black)
+                        .fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
         }
         .padding(24)
-        // The full 18-hole grid is 1,064pt wide before padding (label column, 18 holes,
-        // OUT/IN/TOT columns). A narrower frame silently clips the back nine in ImageRenderer.
-        .frame(width: 1120, alignment: .leading)
+        // Sized to the grid rather than to a constant, so a nine-hole round ships a nine-hole-wide
+        // image instead of an 18-hole frame with the right half left blank. A frame narrower than
+        // the grid silently clips holes in ImageRenderer, so this must never be a guess.
+        .frame(width: grid.intrinsicWidth + 48, alignment: .leading)
         .background(Color.white)
         .environment(\.colorScheme, .light)
     }
@@ -238,6 +256,18 @@ private struct ScorecardGrid: View {
     private let cellWidth: CGFloat = 42
     private let sumCellWidth: CGFloat = 56
     private let rowHeight: CGFloat = 50
+
+    /// Exactly how wide `flatGrid` draws, so the shared image can size itself to the grid instead
+    /// of to a constant. An 18-hole card is 1,076pt; a nine-hole card is 586pt, and hardcoding the
+    /// former shipped every nine-hole round with ~500pt of white space down the right-hand side.
+    ///
+    /// Nine-hole rounds carry one total column; eighteen carry OUT, IN and TOT.
+    var intrinsicWidth: CGFloat {
+        let sumColumns: CGFloat = showsOutIn ? 3 : 1
+        return labelColumnWidth
+            + CGFloat(holes.count) * cellWidth
+            + sumColumns * sumCellWidth
+    }
 
     private func rowTint(_ index: Int) -> Color {
         index.isMultiple(of: 2) ? .clear : RoundPlayColors.fillSecondary.opacity(0.5)
