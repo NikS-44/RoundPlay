@@ -21,7 +21,7 @@ struct GameSetupView: View {
                     step: model.stepNumber(for: .games),
                     totalSteps: model.totalSteps,
                     title: "What games do you want to play?",
-                    detail: "\(model.seats.count) players"
+                    detail: pluralized(model.seats.count, "player")
                 )
             }
 
@@ -210,10 +210,8 @@ private struct GameSelectionRow: View {
                     Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                         .font(.title2)
                         .foregroundStyle(isSelected ? RoundPlayColors.accent : .secondary)
-                    Image(systemName: metadata.iconName)
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
-                        .frame(width: 22)
+                    GameIcon(systemName: metadata.iconName, size: 22)
+                        .frame(width: 24, alignment: .center)
                     VStack(alignment: .leading, spacing: 2) {
                         RoundPlayTypography.headline(metadata.displayName)
                         RoundPlayTypography.caption(metadata.summary)

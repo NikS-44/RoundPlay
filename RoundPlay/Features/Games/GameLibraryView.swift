@@ -21,15 +21,33 @@ struct GameLibraryView: View {
     }
 }
 
+/// One game's symbol, normalized.
+///
+/// SF Symbols vary wildly in aspect ratio and rendering mode: `person.3.fill` is nearly twice the
+/// width of `numbersign.circle.fill`, and `flag.checkered.2.crossed` is a multicolor symbol that
+/// ignores `foregroundStyle` and rendered black-and-white in a row of otherwise-green icons.
+/// Forcing monochrome and a fixed square keeps every game row's title on the same left edge.
+struct GameIcon: View {
+    let systemName: String
+    var size: CGFloat = 26
+
+    var body: some View {
+        Image(systemName: systemName)
+            .resizable()
+            .symbolRenderingMode(.monochrome)
+            .aspectRatio(contentMode: .fit)
+            .foregroundStyle(RoundPlayColors.accent)
+            .frame(width: size, height: size)
+    }
+}
+
 struct GameCard: View {
     let metadata: GameMetadata
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: metadata.iconName)
-                .font(.title2)
-                .foregroundStyle(RoundPlayColors.accent)
-                .frame(width: 28)
+            GameIcon(systemName: metadata.iconName)
+                .frame(width: 30, alignment: .center)
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     RoundPlayTypography.headline(metadata.displayName)

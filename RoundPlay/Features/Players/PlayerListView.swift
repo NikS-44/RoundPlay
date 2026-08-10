@@ -1,9 +1,13 @@
 import SwiftUI
 import SwiftData
 
-/// Your roster of playing companions, most recent first.
+/// Your roster of playing companions, the people you play with most at the top.
+///
+/// Sorted by rounds played rather than recency, matching the round builder's roster step. Each row
+/// shows its round count, so ordering by anything else made the list look unsorted — "28 rounds, 4
+/// rounds, 1 round, 7 rounds" reads as a bug even when the recency order behind it is correct.
 struct PlayerListView: View {
-    @Query(sort: [SortDescriptor(\PlayerRecord.lastPlayedAt, order: .reverse),
+    @Query(sort: [SortDescriptor(\PlayerRecord.playCount, order: .reverse),
                   SortDescriptor(\PlayerRecord.name)])
     private var players: [PlayerRecord]
 
@@ -84,7 +88,7 @@ struct PlayerRow: View {
             }
             Spacer()
             if player.playCount > 0 {
-                Text("\(player.playCount) rounds")
+                Text(pluralized(player.playCount, "round"))
                     .font(RoundPlayFont.archivo(13))
                     .foregroundStyle(.tertiary)
             }

@@ -25,9 +25,7 @@ struct GameDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 HStack(spacing: 12) {
-                    Image(systemName: metadata.iconName)
-                        .font(.largeTitle)
-                        .foregroundStyle(RoundPlayColors.accent)
+                    GameIcon(systemName: metadata.iconName, size: 36)
                     VStack(alignment: .leading, spacing: 2) {
                         RoundPlayTypography.title(metadata.displayName)
                         RoundPlayTypography.eyebrow(metadata.playerCountLabel)

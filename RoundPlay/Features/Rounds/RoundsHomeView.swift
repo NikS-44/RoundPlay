@@ -244,7 +244,7 @@ private struct InProgressRoundCard: View {
             RoundPlayTypography.title(round.courseName)
                 .foregroundStyle(RoundPlayColors.paperOnBoard)
 
-            Text("\(round.orderedSeats.count) players · \(gameNames) · thru \(holesPlayed)")
+            Text("\(pluralized(round.orderedSeats.count, "player")) · \(gameNames) · thru \(holesPlayed)")
                 .font(RoundPlayFont.archivo(13))
                 .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.6))
 

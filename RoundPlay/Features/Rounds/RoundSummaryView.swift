@@ -144,7 +144,7 @@ struct RoundSummaryView: View {
                 .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.65))
             RoundPlayTypography.title(round.courseName)
                 .foregroundStyle(RoundPlayColors.paperOnBoard)
-            Text("\(round.orderedSeats.count) players · \(round.startedAt, style: .date)")
+            Text("\(pluralized(round.orderedSeats.count, "player")) · \(round.startedAt.formatted(date: .abbreviated, time: .omitted))")
                 .font(RoundPlayFont.archivo(13))
                 .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.6))
 
