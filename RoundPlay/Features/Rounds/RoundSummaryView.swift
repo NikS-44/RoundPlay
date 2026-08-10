@@ -84,8 +84,7 @@ struct RoundSummaryView: View {
                     )
                 }
             } header: {
-                RoundPlayTypography.eyebrow("Final Scores")
-                    .foregroundStyle(.secondary)
+                RoundPlaySectionHeader("Final Scores")
             } footer: {
                 if isPartialRound {
                     RoundPlayTypography.caption("This round ended early — totals cover the holes that were scored.")
@@ -99,8 +98,7 @@ struct RoundSummaryView: View {
                         moneyRow(rank: index + 1, seat: entry.seat, net: entry.net)
                     }
                 } header: {
-                    RoundPlayTypography.eyebrow(gameNames)
-                        .foregroundStyle(.secondary)
+                    RoundPlaySectionHeader(gameNames)
                 }
             }
 

@@ -18,7 +18,8 @@ enum EngineBridge {
             log: (round.events ?? []).compactMap(\.engineEvent),
             seats: round.orderedSeats.map(\.engineSeat),
             course: course,
-            segment: round.holeSegment
+            segment: round.holeSegment,
+            handicapSettings: round.handicapSettings
         )
     }
 

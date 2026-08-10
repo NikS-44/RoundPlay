@@ -44,7 +44,7 @@ struct PlayerEditSheet: View {
                     .textInputAutocapitalization(.words)
                     .autocorrectionDisabled()
             } header: {
-                RoundPlayTypography.eyebrow("Name").foregroundStyle(.secondary)
+                RoundPlaySectionHeader("Name")
             } footer: {
                 if player == nil {
                     RoundPlayTypography.caption("Leave blank for a random nickname.")
@@ -60,7 +60,7 @@ struct PlayerEditSheet: View {
                 }
                 .pickerStyle(.wheel)
             } header: {
-                RoundPlayTypography.eyebrow("Handicap").foregroundStyle(.secondary)
+                RoundPlaySectionHeader("Handicap")
             } footer: {
                 RoundPlayTypography.caption("Optional. Leave blank to play off scratch. Strokes are given on the hardest holes.")
                     .foregroundStyle(.secondary)

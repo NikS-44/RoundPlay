@@ -55,7 +55,7 @@ struct PlayAgainConfirmView: View {
                         .buttonStyle(RoundPlayRowButtonStyle())
                         .roundPlayListRowSeparatorFullWidth()
                     } header: {
-                        RoundPlayTypography.eyebrow("Course")
+                        RoundPlaySectionHeader("Course")
                             .foregroundStyle(.secondary)
                     }
 
@@ -70,7 +70,7 @@ struct PlayAgainConfirmView: View {
                             .roundPlayListRowSeparatorFullWidth()
                         }
                     } header: {
-                        RoundPlayTypography.eyebrow("Players")
+                        RoundPlaySectionHeader("Players")
                             .foregroundStyle(.secondary)
                     } footer: {
                         RoundPlayTypography.caption("Tap anyone to swap them out for this round.")
@@ -97,7 +97,7 @@ struct PlayAgainConfirmView: View {
                         .buttonStyle(RoundPlayRowButtonStyle())
                         .roundPlayListRowSeparatorFullWidth()
                     } header: {
-                        RoundPlayTypography.eyebrow("Games & Bets")
+                        RoundPlaySectionHeader("Games & Bets")
                             .foregroundStyle(.secondary)
                     }
                 }

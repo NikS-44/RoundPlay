@@ -17,7 +17,7 @@ struct NewRoundFlowView: View {
     var startingCourse: CourseRecord?
     let onStart: (RoundRecord) -> Void
 
-    private enum Step: Hashable { case playerCount, knownPlayers, fillRemaining, holes, games, bestBallTeams }
+    private enum Step: Hashable { case playerCount, knownPlayers, fillRemaining, strokes, holes, games, bestBallTeams }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -50,13 +50,15 @@ struct NewRoundFlowView: View {
                     // "confirm your placeholders" step with no placeholders on it.
                     KnownPlayersStep(model: model) {
                         if model.seats.allSatisfy({ !$0.isAnonymous }) {
-                            path.append(Step.holes)
+                            path.append(Step.strokes)
                         } else {
                             path.append(Step.fillRemaining)
                         }
                     }
                 case .fillRemaining:
-                    FillRemainingStep(model: model) { path.append(Step.holes) }
+                    FillRemainingStep(model: model) { path.append(Step.strokes) }
+                case .strokes:
+                    StrokesStepView(model: model) { path.append(Step.holes) }
                 case .holes:
                     HoleSegmentStep(model: model) { path.append(Step.games) }
                 case .games:
@@ -584,7 +586,7 @@ struct SeatAssignmentSheet: View {
                 }
                 .listRowSeparator(.hidden)
             } header: {
-                RoundPlayTypography.eyebrow("Who's in this seat?")
+                RoundPlaySectionHeader("Who's in this seat?")
                     .foregroundStyle(.secondary)
             }
 
@@ -616,7 +618,7 @@ struct SeatAssignmentSheet: View {
                     .roundPlayListRowSeparatorFullWidth()
                 }
             } header: {
-                RoundPlayTypography.eyebrow("Roster")
+                RoundPlaySectionHeader("Roster")
                     .foregroundStyle(.secondary)
             }
         }

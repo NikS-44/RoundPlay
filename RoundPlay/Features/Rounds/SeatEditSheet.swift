@@ -50,7 +50,7 @@ struct SeatEditSheet: View {
                         Toggle("Save to Roster", isOn: $savesNewNameToRoster)
                     }
                 } header: {
-                    RoundPlayTypography.eyebrow("Name").foregroundStyle(.secondary)
+                    RoundPlaySectionHeader("Name")
                 } footer: {
                     if linkedPlayer != nil {
                         RoundPlayTypography.caption("This is \(linkedPlayer?.name ?? "a") from your roster — you can fix their name here and in the roster at the same time.")
@@ -69,7 +69,7 @@ struct SeatEditSheet: View {
                     }
                     .pickerStyle(.wheel)
                 } header: {
-                    RoundPlayTypography.eyebrow("Course Handicap").foregroundStyle(.secondary)
+                    RoundPlaySectionHeader("Course Handicap")
                 } footer: {
                     RoundPlayTypography.caption("This round only — your roster handicap is unchanged.")
                         .foregroundStyle(.secondary)

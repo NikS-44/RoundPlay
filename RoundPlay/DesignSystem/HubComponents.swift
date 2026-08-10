@@ -15,6 +15,26 @@ struct HubSectionLabel: View {
     }
 }
 
+// MARK: - List section header
+
+/// The header for a `Section` inside a `RoundPlayList`.
+///
+/// Bold Archivo in the accent green rather than the 9.5pt mono eyebrow. The eyebrow works as a
+/// label sitting on a dark card, where it has contrast to spare, but as a section header on a
+/// white list it reads as barely-there grey — which is exactly wrong for an app used in direct
+/// sun, and the first thing anyone says about it is that they can't see it.
+struct RoundPlaySectionHeader: View {
+    let title: String
+
+    init(_ title: String) { self.title = title }
+
+    var body: some View {
+        Text(title)
+            .font(RoundPlayFont.archivo(15, .bold))
+            .foregroundStyle(RoundPlayColors.accent)
+    }
+}
+
 // MARK: - Hub row
 
 /// Icon + title + subtitle list row used by "pick a destination" screens.

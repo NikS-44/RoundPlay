@@ -60,7 +60,7 @@ struct CourseEntryView: View {
                     )
                 }
             } header: {
-                RoundPlayTypography.eyebrow("Holes")
+                RoundPlaySectionHeader("Holes")
                     .foregroundStyle(.secondary)
             }
 

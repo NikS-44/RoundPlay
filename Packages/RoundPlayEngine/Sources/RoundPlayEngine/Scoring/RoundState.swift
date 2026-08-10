@@ -8,6 +8,12 @@ public struct RoundState: Sendable {
     public let seats: [Seat]
     public let course: Course
     public let segment: RoundSegment
+    public let handicapSettings: HandicapSettings
+
+    /// Playing handicap per player, resolved once at init rather than per `strokesReceived` call —
+    /// `offTheLow` depends on every other seat, so recomputing it per hole per player would be
+    /// quadratic across a scorecard render.
+    private let playingHandicaps: [UUID: Int]
 
     /// Highest-sequence stroke entry per (hole, player).
     private let strokesByHolePlayer: [HolePlayer: Int]
@@ -26,10 +32,18 @@ public struct RoundState: Sendable {
         let kind: HoleEventKind
     }
 
-    public init(log: [ScoreEvent], seats: [Seat], course: Course, segment: RoundSegment = .total) {
+    public init(
+        log: [ScoreEvent],
+        seats: [Seat],
+        course: Course,
+        segment: RoundSegment = .total,
+        handicapSettings: HandicapSettings = .default
+    ) {
         self.seats = seats
         self.course = course
         self.segment = segment
+        self.handicapSettings = handicapSettings
+        self.playingHandicaps = PlayingHandicap.byPlayer(seats: seats, settings: handicapSettings)
 
         // Sorting ascending and letting later writes overwrite gives "highest sequence wins"
         // without a comparison in the loop. Ties on sequence are broken by event id so the
@@ -71,12 +85,18 @@ public struct RoundState: Sendable {
     }
 
     public func strokesReceived(hole: Int, player: UUID) -> Int {
-        guard let seat = seats.first(where: { $0.playerID == player }),
+        guard let playingHandicap = playingHandicaps[player],
               let strokeIndex = course.hole(hole)?.strokeIndex else { return 0 }
         return HandicapAllocation.strokesReceived(
-            courseHandicap: seat.courseHandicap,
+            courseHandicap: playingHandicap,
             strokeIndex: strokeIndex
         )
+    }
+
+    /// The playing handicap this seat ends up with after allowance, cap and mode — the number the
+    /// setup screen shows as "gets N strokes".
+    public func playingHandicap(for player: UUID) -> Int {
+        playingHandicaps[player] ?? 0
     }
 
     public func net(hole: Int, player: UUID) -> Int? {

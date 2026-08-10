@@ -35,6 +35,18 @@ final class RoundSeatDraft: Identifiable {
         return "Handicap \(handicap.formatted(.number.precision(.fractionLength(0...1))))"
     }
 
+    /// The handicap index this seat carries into the round, if any. `nil` means nobody has said —
+    /// which the strokes step treats as new information worth offering to save.
+    var handicapIndexForRound: Double? {
+        assignedPlayer?.handicapIndex ?? guestHandicap
+    }
+
+    /// Whole-stroke course handicap for this seat. Matches `PlayerRecord.courseHandicap`: the app
+    /// doesn't collect slope or course rating, so a rounded index is the course handicap.
+    var courseHandicapForRound: Int {
+        Int((handicapIndexForRound ?? 0).rounded())
+    }
+
     /// A seat is ready once it names someone — assigned or given a guest nickname. Placeholders
     /// count: that's the whole point of auto-nicknaming, so counting/players/games never blocks
     /// on someone confirming who's who.
@@ -97,6 +109,15 @@ final class NewRoundModel {
     /// onboarding) — skips straight past the course step.
     var skipsCourseStep = false
 
+    /// How the group agreed to handle strokes. Defaults to off-the-low because that's how every
+    /// hole-by-hole money game is actually played.
+    var handicapSettings: HandicapSettings = .default
+    /// Strokes a seat was given by hand on the strokes step, keyed by seat id.
+    ///
+    /// An override is a number the group agreed out loud ("you give me four"), so it replaces the
+    /// computed playing handicap outright rather than feeding back through allowance and mode.
+    var strokeOverrides: [UUID: Int] = [:]
+
     // MARK: - Step numbering
 
     /// The screens the round builder can walk through, in order.
@@ -107,7 +128,7 @@ final class NewRoundModel {
     /// every screen after it said "of 7", and a group that filled all four seats from the roster
     /// counted 1, 2, 3, 5, 6 with no step 4 in sight.
     enum BuilderStep: CaseIterable {
-        case course, playerCount, knownPlayers, fillRemaining, holes, games, bestBallTeams
+        case course, playerCount, knownPlayers, fillRemaining, strokes, holes, games, bestBallTeams
     }
 
     /// Only the steps this particular round will actually show.
@@ -123,6 +144,52 @@ final class NewRoundModel {
     }
 
     var totalSteps: Int { activeSteps.count }
+
+    // MARK: - Strokes
+
+    /// Strokes each seat will actually receive, keyed by seat draft id.
+    ///
+    /// Runs the real engine computation over throwaway seats rather than reimplementing allowance,
+    /// cap and off-the-low in the view layer — the number on the setup screen has to be the number
+    /// the scorecard uses, or the group agreed to something the app didn't do.
+    var strokesBySeat: [UUID: Int] {
+        let probes = seats.map { draft in
+            Seat(
+                playerID: draft.id,
+                name: draft.displayName,
+                courseHandicap: draft.courseHandicapForRound,
+                strokeOverride: strokeOverrides[draft.id]
+            )
+        }
+        return PlayingHandicap.byPlayer(seats: probes, settings: handicapSettings)
+    }
+
+    func strokes(for draft: RoundSeatDraft) -> Int {
+        strokesBySeat[draft.id] ?? 0
+    }
+
+    /// The seat playing off scratch under off-the-low — everyone else is giving or receiving
+    /// relative to this player, which is what the group says out loud.
+    var lowSeat: RoundSeatDraft? {
+        seats.min { $0.courseHandicapForRound < $1.courseHandicapForRound }
+    }
+
+    /// Allowance the chosen games recommend, or `nil` when they disagree or none applies.
+    ///
+    /// Four-ball formats (Best Ball) carry the lowest allowances because a team taking the better
+    /// of two balls compounds high handicaps.
+    var recommendedAllowance: Int? {
+        guard !configurations.isEmpty else { return nil }
+        let recommendations = Set(configurations.map { configuration -> Int in
+            switch configuration.gameType {
+            case .bestBall: 85
+            case .matchPlay: 100
+            case .stableford, .strokePlay: 95
+            default: 100
+            }
+        })
+        return recommendations.count == 1 ? recommendations.first : nil
+    }
 
     /// 1-based position of `step` among the steps actually being shown. Falls back to the
     /// unconditional ordering if asked about a step this round skips, so a label can never read
@@ -208,15 +275,18 @@ final class NewRoundModel {
         guard let course, course.engineCourse != nil else { return nil }
 
         let round = RoundRecord(courseID: course.id, courseName: course.name, holeSegment: holeSegment)
+        round.handicapSettings = handicapSettings
         var seatRecords: [SeatRecord] = []
         for (index, draft) in seats.enumerated() {
             let resolved = draft.resolvedForRound(in: context)
-            seatRecords.append(SeatRecord(
+            let seatRecord = SeatRecord(
                 playerID: resolved.playerID,
                 name: resolved.name,
                 courseHandicap: resolved.courseHandicap,
                 position: index
-            ))
+            )
+            seatRecord.strokeOverride = strokeOverrides[draft.id]
+            seatRecords.append(seatRecord)
             if let player = resolved.persistedPlayer {
                 player.lastPlayedAt = Date()
                 player.playCount += 1

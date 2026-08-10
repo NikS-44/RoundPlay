@@ -122,8 +122,7 @@ struct RoundsHomeView: View {
                         }
                     }
                 } header: {
-                    RoundPlayTypography.eyebrow("Previous Rounds")
-                        .foregroundStyle(.secondary)
+                    RoundPlaySectionHeader("Previous Rounds")
                 }
             }
         }

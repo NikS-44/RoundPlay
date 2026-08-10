@@ -40,7 +40,7 @@ struct RoundEditSheet: View {
                     .buttonStyle(RoundPlayRowButtonStyle())
                     .roundPlayListRowSeparatorFullWidth()
                 } header: {
-                    RoundPlayTypography.eyebrow("Course")
+                    RoundPlaySectionHeader("Course")
                         .foregroundStyle(.secondary)
                 }
 
@@ -65,7 +65,7 @@ struct RoundEditSheet: View {
                         .roundPlayListRowSeparatorFullWidth()
                     }
                 } header: {
-                    RoundPlayTypography.eyebrow("Players")
+                    RoundPlaySectionHeader("Players")
                         .foregroundStyle(.secondary)
                 } footer: {
                     RoundPlayTypography.caption("Tap the pencil to fix a name, handicap, or course detail.")

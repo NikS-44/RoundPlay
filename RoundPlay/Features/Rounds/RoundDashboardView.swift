@@ -78,8 +78,7 @@ struct RoundDashboardView: View {
                         .roundPlayListRowSeparatorFullWidth()
                     }
                 } header: {
-                    RoundPlayTypography.eyebrow("Scoring")
-                        .foregroundStyle(.secondary)
+                    RoundPlaySectionHeader("Scoring")
                 } footer: {
                     RoundPlayTypography.caption("No games running — plain stroke play, net score vs. par.")
                         .foregroundStyle(.secondary)
@@ -120,7 +119,7 @@ struct RoundDashboardView: View {
                         }
                     }
                 } header: {
-                    RoundPlayTypography.eyebrow(GameLibrary.metadata(for: settlement.gameType).displayName)
+                    RoundPlaySectionHeader(GameLibrary.metadata(for: settlement.gameType).displayName)
                 }
             }
 

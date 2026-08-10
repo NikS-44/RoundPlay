@@ -46,9 +46,7 @@ struct GameSetupView: View {
                     .roundPlayListRowSeparatorFullWidth()
                 }
             } header: {
-                Text("Games")
-                    .font(RoundPlayFont.archivo(15, .bold))
-                    .foregroundStyle(RoundPlayColors.accent)
+                RoundPlaySectionHeader("Games")
             } footer: {
                 RoundPlayTypography.caption("Optional — pick none and it's still a normal scorecard, just no side bets.")
                     .foregroundStyle(.secondary)
