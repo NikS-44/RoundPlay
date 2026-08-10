@@ -245,7 +245,12 @@ private struct SummaryActionButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 6) {
+            // Baseline-aligned, not centre-aligned. `square.and.arrow.up` has an arrow poking out
+            // above the tray, so its bounding box carries far more empty space above the visible
+            // glyph than below — centring the box drops the part you actually see below the
+            // text's optical centre. Sitting both on the same baseline is what SF Symbols are
+            // drawn for, and it holds for the round `dollarsign.circle` on the sibling button too.
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
                 // Built from Image + Text instead of `Label` — the SF Symbol inside a `Label`
                 // scales off the archivo font's metrics, which rendered it noticeably oversized
                 // next to the text; sizing the icon on its own keeps it proportionate.
