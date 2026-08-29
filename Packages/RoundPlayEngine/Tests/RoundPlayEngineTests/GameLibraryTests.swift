@@ -7,7 +7,7 @@ private let b = UUID(uuidString: "70000000-0000-0000-0000-000000000002")!
 
 @Test("Library exposes metadata for all launch games")
 func libraryListsAllGames() {
-    #expect(GameLibrary.all.count == 9)
+    #expect(GameLibrary.all.count == 10)
     #expect(Set(GameLibrary.all.map(\.gameType)) == Set(GameType.allCases))
 }
 

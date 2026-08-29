@@ -1,0 +1,257 @@
+{
+  "configuration" : {
+    "sixes" : {
+      "_0" : {
+        "unitStake" : 1
+      }
+    }
+  },
+  "course" : {
+    "holes" : [
+      {
+        "number" : 1,
+        "par" : 4,
+        "strokeIndex" : 1
+      },
+      {
+        "number" : 2,
+        "par" : 5,
+        "strokeIndex" : 11
+      },
+      {
+        "number" : 3,
+        "par" : 3,
+        "strokeIndex" : 17
+      },
+      {
+        "number" : 4,
+        "par" : 4,
+        "strokeIndex" : 3
+      },
+      {
+        "number" : 5,
+        "par" : 4,
+        "strokeIndex" : 7
+      },
+      {
+        "number" : 6,
+        "par" : 3,
+        "strokeIndex" : 15
+      },
+      {
+        "number" : 7,
+        "par" : 5,
+        "strokeIndex" : 13
+      },
+      {
+        "number" : 8,
+        "par" : 4,
+        "strokeIndex" : 5
+      },
+      {
+        "number" : 9,
+        "par" : 4,
+        "strokeIndex" : 9
+      },
+      {
+        "number" : 10,
+        "par" : 4,
+        "strokeIndex" : 2
+      },
+      {
+        "number" : 11,
+        "par" : 3,
+        "strokeIndex" : 16
+      },
+      {
+        "number" : 12,
+        "par" : 5,
+        "strokeIndex" : 12
+      },
+      {
+        "number" : 13,
+        "par" : 4,
+        "strokeIndex" : 4
+      },
+      {
+        "number" : 14,
+        "par" : 4,
+        "strokeIndex" : 8
+      },
+      {
+        "number" : 15,
+        "par" : 3,
+        "strokeIndex" : 18
+      },
+      {
+        "number" : 16,
+        "par" : 5,
+        "strokeIndex" : 14
+      },
+      {
+        "number" : 17,
+        "par" : 4,
+        "strokeIndex" : 6
+      },
+      {
+        "number" : 18,
+        "par" : 4,
+        "strokeIndex" : 10
+      }
+    ],
+    "id" : "00000000-0000-0000-0000-0000000000C0",
+    "name" : "Test Par 72"
+  },
+  "engineVersion" : "0.1.0",
+  "expected" : [
+    {
+      "money" : "2",
+      "playerName" : "Ann",
+      "points" : 2
+    },
+    {
+      "money" : "0",
+      "playerName" : "Ben",
+      "points" : 1
+    },
+    {
+      "money" : "0",
+      "playerName" : "Cal",
+      "points" : 1
+    },
+    {
+      "money" : "-2",
+      "playerName" : "Dee",
+      "points" : 0
+    }
+  ],
+  "log" : [
+    {
+      "enteredBy" : "A0000000-0000-0000-0000-000000000001",
+      "hole" : 1,
+      "id" : "B0000000-0000-0000-0000-000000000000",
+      "payload" : {
+        "strokes" : {
+          "_0" : 3
+        }
+      },
+      "playerID" : "A0000000-0000-0000-0000-000000000001",
+      "recordedAt" : -978307199,
+      "sequence" : 1
+    },
+    {
+      "enteredBy" : "A0000000-0000-0000-0000-000000000001",
+      "hole" : 1,
+      "id" : "B0000000-0000-0000-0000-000000000001",
+      "payload" : {
+        "strokes" : {
+          "_0" : 8
+        }
+      },
+      "playerID" : "A0000000-0000-0000-0000-000000000002",
+      "recordedAt" : -978307198,
+      "sequence" : 2
+    },
+    {
+      "enteredBy" : "A0000000-0000-0000-0000-000000000001",
+      "hole" : 1,
+      "id" : "B0000000-0000-0000-0000-000000000002",
+      "payload" : {
+        "strokes" : {
+          "_0" : 4
+        }
+      },
+      "playerID" : "A0000000-0000-0000-0000-000000000003",
+      "recordedAt" : -978307197,
+      "sequence" : 3
+    },
+    {
+      "enteredBy" : "A0000000-0000-0000-0000-000000000001",
+      "hole" : 1,
+      "id" : "B0000000-0000-0000-0000-000000000003",
+      "payload" : {
+        "strokes" : {
+          "_0" : 5
+        }
+      },
+      "playerID" : "A0000000-0000-0000-0000-000000000004",
+      "recordedAt" : -978307196,
+      "sequence" : 4
+    },
+    {
+      "enteredBy" : "A0000000-0000-0000-0000-000000000001",
+      "hole" : 7,
+      "id" : "B0000000-0000-0000-0000-000000000004",
+      "payload" : {
+        "strokes" : {
+          "_0" : 3
+        }
+      },
+      "playerID" : "A0000000-0000-0000-0000-000000000001",
+      "recordedAt" : -978307195,
+      "sequence" : 5
+    },
+    {
+      "enteredBy" : "A0000000-0000-0000-0000-000000000001",
+      "hole" : 7,
+      "id" : "B0000000-0000-0000-0000-000000000005",
+      "payload" : {
+        "strokes" : {
+          "_0" : 8
+        }
+      },
+      "playerID" : "A0000000-0000-0000-0000-000000000003",
+      "recordedAt" : -978307194,
+      "sequence" : 6
+    },
+    {
+      "enteredBy" : "A0000000-0000-0000-0000-000000000001",
+      "hole" : 7,
+      "id" : "B0000000-0000-0000-0000-000000000006",
+      "payload" : {
+        "strokes" : {
+          "_0" : 4
+        }
+      },
+      "playerID" : "A0000000-0000-0000-0000-000000000002",
+      "recordedAt" : -978307193,
+      "sequence" : 7
+    },
+    {
+      "enteredBy" : "A0000000-0000-0000-0000-000000000001",
+      "hole" : 7,
+      "id" : "B0000000-0000-0000-0000-000000000007",
+      "payload" : {
+        "strokes" : {
+          "_0" : 5
+        }
+      },
+      "playerID" : "A0000000-0000-0000-0000-000000000004",
+      "recordedAt" : -978307192,
+      "sequence" : 8
+    }
+  ],
+  "name" : "sixes-rotation",
+  "seats" : [
+    {
+      "courseHandicap" : 0,
+      "name" : "Ann",
+      "playerID" : "A0000000-0000-0000-0000-000000000001"
+    },
+    {
+      "courseHandicap" : 0,
+      "name" : "Ben",
+      "playerID" : "A0000000-0000-0000-0000-000000000002"
+    },
+    {
+      "courseHandicap" : 0,
+      "name" : "Cal",
+      "playerID" : "A0000000-0000-0000-0000-000000000003"
+    },
+    {
+      "courseHandicap" : 0,
+      "name" : "Dee",
+      "playerID" : "A0000000-0000-0000-0000-000000000004"
+    }
+  ]
+}

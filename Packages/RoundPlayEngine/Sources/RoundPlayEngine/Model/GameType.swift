@@ -11,6 +11,7 @@ public enum GameType: String, Equatable, Sendable, Codable, CaseIterable {
     case nines
     case wolf
     case bingoBangoBongo
+    case sixes
 }
 
 /// What a game needs the scorecard UI to collect beyond gross strokes.

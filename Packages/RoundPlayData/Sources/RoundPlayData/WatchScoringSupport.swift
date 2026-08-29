@@ -31,6 +31,7 @@ public enum WatchGameDefaults {
         case .strokePlay: .strokePlay(StrokePlayConfig())
         case .matchPlay: .matchPlay(MatchPlayConfig(unitStake: stake))
         case .bestBall: .bestBall(BestBallConfig(unitStake: stake))
+        case .sixes: .sixes(SixesConfig(unitStake: stake))
         case .skins: .skins(SkinsConfig(unitStake: stake))
         case .nassau: .nassau(NassauConfig(unitStake: stake))
         case .stableford: .stableford(StablefordConfig(unitStake: stake))

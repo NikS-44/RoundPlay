@@ -41,7 +41,9 @@ struct RoundPlaySectionHeader: View {
 ///
 /// Small and quiet on purpose: it's a persistent fact about the round rather than something that
 /// changes hole to hole, so it should be readable at a glance and invisible the rest of the time.
-struct BestBallTeamBadge: View {
+/// The "A"/"B" chip next to a player's name in a two-team game — Best Ball's fixed pairing, or
+/// Sixes' pairing for whichever hole is on screen.
+struct TeamBadge: View {
     let team: String
 
     var body: some View {

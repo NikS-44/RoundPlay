@@ -8,7 +8,7 @@ enum FixtureCatalog {
     static let cal = UUID(uuidString: "A0000000-0000-0000-0000-000000000003")!
     static let dee = UUID(uuidString: "A0000000-0000-0000-0000-000000000004")!
 
-    static var all: [EngineFixture] { [skinsCarryover, ninesTies, wolfLoneWin] }
+    static var all: [EngineFixture] { [skinsCarryover, ninesTies, wolfLoneWin, sixesRotation] }
 
     private static func threeSeats() -> [Seat] {
         [
@@ -103,6 +103,38 @@ enum FixtureCatalog {
                 .init(playerName: "Ben", points: 0, money: "-4"),
                 .init(playerName: "Cal", points: 0, money: "-4"),
                 .init(playerName: "Dee", points: 0, money: "-4")
+            ]
+        )
+    }
+
+    /// Partners swap between hole 1's pairing and hole 7's — the rule that has to be right for
+    /// Sixes to be trustworthy: money follows whoever you're paired with *this* hole, not a team
+    /// fixed for the whole round.
+    static var sixesRotation: EngineFixture {
+        let seats = [
+            Seat(playerID: ann, name: "Ann", courseHandicap: 0),
+            Seat(playerID: ben, name: "Ben", courseHandicap: 0),
+            Seat(playerID: cal, name: "Cal", courseHandicap: 0),
+            Seat(playerID: dee, name: "Dee", courseHandicap: 0)
+        ]
+        let log = strokes([
+            (1, ann, 3), (1, ben, 8), (1, cal, 4), (1, dee, 5), // holes 1-6 pairing: Ann+Ben beat Cal+Dee
+            (7, ann, 3), (7, cal, 8), (7, ben, 4), (7, dee, 5)  // holes 7-12 pairing: Ann+Cal beat Ben+Dee
+        ])
+        return EngineFixture(
+            name: "sixes-rotation",
+            engineVersion: RoundPlayEngineVersion.current,
+            course: .testPar72,
+            seats: seats,
+            log: log,
+            configuration: .sixes(SixesConfig(unitStake: 1)),
+            expected: [
+                // Ann partnered a winner both holes: +2. Ben and Cal each won one, lost the
+                // other — against each other the second time — netting to 0. Dee lost both.
+                .init(playerName: "Ann", points: 2, money: "2"),
+                .init(playerName: "Ben", points: 1, money: "0"),
+                .init(playerName: "Cal", points: 1, money: "0"),
+                .init(playerName: "Dee", points: 0, money: "-2")
             ]
         )
     }

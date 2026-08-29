@@ -63,6 +63,16 @@ public final class RoundRecord {
         }
         return teamA.contains(position) ? "A" : "B"
     }
+
+    /// This seat's team letter for the Sixes pairing in effect on `hole` — unlike
+    /// `bestBallTeamLabel`, this changes every six holes, so it takes the hole rather than
+    /// answering once for the whole round. `nil` when Sixes isn't one of the round's games.
+    public func sixesTeamLabel(for seat: SeatRecord, atHole hole: Int) -> String? {
+        guard (games ?? []).contains(where: { $0.configuration?.gameType == .sixes }),
+              let position = orderedSeats.firstIndex(where: { $0.id == seat.id })
+        else { return nil }
+        return SixesEngine.teams(forHole: hole).teamA.contains(position) ? "A" : "B"
+    }
 }
 
 extension RoundSegment {

@@ -131,6 +131,7 @@ struct GameSetupView: View {
         case .strokePlay: .strokePlay(StrokePlayConfig())
         case .matchPlay: .matchPlay(MatchPlayConfig(unitStake: stake))
         case .bestBall: .bestBall(BestBallConfig(unitStake: stake, teamASeatPositions: model.bestBallTeamA))
+        case .sixes: .sixes(SixesConfig(unitStake: stake))
         case .skins: .skins(SkinsConfig(unitStake: stake))
         case .nassau: .nassau(NassauConfig(unitStake: stake))
         case .stableford: .stableford(StablefordConfig(unitStake: stake))
@@ -204,6 +205,7 @@ private struct GameSelectionRow: View {
         case .strokePlay: 0
         case .matchPlay: 1
         case .bestBall: Decimal(holeCount)
+        case .sixes: Decimal(holeCount)
         case .nassau: 3
         case .wolf: Decimal(holeCount) * 4
         case .bingoBangoBongo: Decimal(holeCount) * 3

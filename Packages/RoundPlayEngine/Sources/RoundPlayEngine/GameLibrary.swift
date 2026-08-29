@@ -11,6 +11,7 @@ public enum GameConfiguration: Equatable, Sendable, Codable {
     case nines(NinesConfig)
     case wolf(WolfConfig)
     case bingoBangoBongo(BingoBangoBongoConfig)
+    case sixes(SixesConfig)
 
     public var gameType: GameType {
         switch self {
@@ -23,6 +24,7 @@ public enum GameConfiguration: Equatable, Sendable, Codable {
         case .nines: .nines
         case .wolf: .wolf
         case .bingoBangoBongo: .bingoBangoBongo
+        case .sixes: .sixes
         }
     }
 
@@ -39,6 +41,7 @@ public enum GameConfiguration: Equatable, Sendable, Codable {
         case .nines(let config): config.unitStake
         case .wolf(let config): config.unitStake
         case .bingoBangoBongo(let config): config.unitStake
+        case .sixes(let config): config.unitStake
         }
     }
 }
@@ -65,7 +68,7 @@ public struct GameMetadata: Equatable, Sendable, Identifiable {
 
 /// The single entry point the app uses to settle any game.
 ///
-/// The UI never imports an engine directly and never switches on `GameType` — adding a seventh
+/// The UI never imports an engine directly and never switches on `GameType` — adding a new
 /// game means adding a case here and nothing else changes.
 public enum GameLibrary {
 
@@ -88,6 +91,7 @@ public enum GameLibrary {
         case .nines: describe(NinesEngine.self)
         case .wolf: describe(WolfEngine.self)
         case .bingoBangoBongo: describe(BingoBangoBongoEngine.self)
+        case .sixes: describe(SixesEngine.self)
         }
     }
 
@@ -119,6 +123,8 @@ public enum GameLibrary {
             return WolfEngine.settle(state: state, config: config)
         case .bingoBangoBongo(let config):
             return BingoBangoBongoEngine.settle(state: state, config: config)
+        case .sixes(let config):
+            return try SixesEngine.settle(state: state, config: config)
         }
     }
 
