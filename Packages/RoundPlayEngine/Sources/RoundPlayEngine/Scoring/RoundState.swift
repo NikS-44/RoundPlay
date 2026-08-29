@@ -3,7 +3,7 @@ import Foundation
 /// The append-only event log folded into current values.
 ///
 /// This is the single place the log→state reduction happens. Every engine reads `RoundState`
-/// and never touches raw events, so "latest sequence wins" is defined exactly once.
+/// and never touches raw events, so "latest recordedAt wins" is defined exactly once.
 public struct RoundState: Sendable {
     public let seats: [Seat]
     public let course: Course
@@ -15,12 +15,14 @@ public struct RoundState: Sendable {
     /// quadratic across a scorecard render.
     private let playingHandicaps: [UUID: Int]
 
-    /// Highest-sequence stroke entry per (hole, player).
+    /// Latest-recordedAt stroke entry per (hole, player).
     private let strokesByHolePlayer: [HolePlayer: Int]
-    /// Highest-sequence Wolf declaration per hole.
+    /// Latest-recordedAt Wolf declaration per hole.
     private let wolfByHole: [Int: (wolf: UUID, declaration: WolfDeclaration)]
-    /// Highest-sequence winner per (hole, event kind).
+    /// Latest-recordedAt winner per (hole, event kind).
     private let holeEvents: [HoleEventKey: UUID]
+    /// Latest-recordedAt press answer per hole — the hole the press would start on.
+    private let pressesByHole: [Int: (player: UUID, decision: PressDecision)]
 
     private struct HolePlayer: Hashable {
         let hole: Int
@@ -45,18 +47,14 @@ public struct RoundState: Sendable {
         self.handicapSettings = handicapSettings
         self.playingHandicaps = PlayingHandicap.byPlayer(seats: seats, settings: handicapSettings)
 
-        // Sorting ascending and letting later writes overwrite gives "highest sequence wins"
-        // without a comparison in the loop. Ties on sequence are broken by event id so the
-        // fold stays deterministic even if the server ever hands out a duplicate.
-        let ordered = log.sorted {
-            $0.sequence == $1.sequence
-                ? $0.id.uuidString < $1.id.uuidString
-                : $0.sequence < $1.sequence
-        }
+        // Sorting ascending and letting later writes overwrite gives "latest recordedAt wins"
+        // without a comparison in the loop. Ties on time are broken by event id.
+        let ordered = log.sorted(by: ScoreEvent.foldAscending)
 
         var strokes: [HolePlayer: Int] = [:]
         var wolf: [Int: (wolf: UUID, declaration: WolfDeclaration)] = [:]
         var events: [HoleEventKey: UUID] = [:]
+        var presses: [Int: (player: UUID, decision: PressDecision)] = [:]
 
         for event in ordered {
             switch event.payload {
@@ -66,6 +64,8 @@ public struct RoundState: Sendable {
                 wolf[event.hole] = (wolf: event.playerID, declaration: declaration)
             case .holeEvent(let kind):
                 events[HoleEventKey(hole: event.hole, kind: kind)] = event.playerID
+            case .press(let decision):
+                presses[event.hole] = (player: event.playerID, decision: decision)
             case .clearStrokes:
                 strokes.removeValue(forKey: HolePlayer(hole: event.hole, player: event.playerID))
             case .clearHoleEvent(let kind):
@@ -76,6 +76,7 @@ public struct RoundState: Sendable {
         self.strokesByHolePlayer = strokes
         self.wolfByHole = wolf
         self.holeEvents = events
+        self.pressesByHole = presses
     }
 
     // MARK: - Scores
@@ -110,6 +111,11 @@ public struct RoundState: Sendable {
         wolfByHole[hole]
     }
 
+    /// How the group answered the press offered on this hole, if they answered at all.
+    public func press(hole: Int) -> (player: UUID, decision: PressDecision)? {
+        pressesByHole[hole]
+    }
+
     public func holeEventWinner(hole: Int, kind: HoleEventKind) -> UUID? {
         guard let winner = holeEvents[HoleEventKey(hole: hole, kind: kind)], seats.contains(where: { $0.playerID == winner }) else { return nil }
         return winner
@@ -125,6 +131,18 @@ public struct RoundState: Sendable {
 
     public func completedHoles(in segment: RoundSegment) -> [Int] {
         (1...18).filter { segment.contains(hole: $0) && isComplete(hole: $0) }
+    }
+
+    /// The hole the group is on: the first one in the segment that isn't finished, or the segment's
+    /// last hole once everything is scored.
+    ///
+    /// Deliberately "first incomplete" rather than "last complete plus one", so a hole that was
+    /// skipped and come back to is what you land on. It shares `isComplete(hole:)` with the "thru
+    /// N" count on the in-progress card, so the card and the scorecard can never disagree about
+    /// where the round has got to.
+    public func currentHole(in segment: RoundSegment) -> Int {
+        let holes = (1...18).filter { segment.contains(hole: $0) }
+        return holes.first { !isComplete(hole: $0) } ?? holes.last ?? 1
     }
 
     // MARK: - Helpers for engines

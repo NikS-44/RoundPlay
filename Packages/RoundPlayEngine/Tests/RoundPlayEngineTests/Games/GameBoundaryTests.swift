@@ -30,7 +30,7 @@ func nassauIncompleteRound() throws {
     }
     scores.append((10, ga, 4)) // back and total remain incomplete
     let state = RoundState(log: strokeLog(scores), seats: twoSeats(), course: .testPar72)
-    let result = try NassauEngine.settle(state: state, config: NassauConfig(unitStake: 7, automaticPressAt: nil))
+    let result = try NassauEngine.settle(state: state, config: NassauConfig(unitStake: 7, pressAt: nil))
     // The front and total bets are both won; the incomplete back bet is ignored.
     #expect(result.money(for: ga) == 14)
     #expect(result.money(for: gb) == -14)

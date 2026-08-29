@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import RoundPlayData
 
 /// Your roster of playing companions, the people you play with most at the top.
 ///

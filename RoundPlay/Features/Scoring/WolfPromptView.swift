@@ -1,5 +1,6 @@
 import SwiftUI
 import RoundPlayEngine
+import RoundPlayData
 
 /// The Wolf's per-hole decision, shown before scores are entered.
 ///

@@ -63,7 +63,7 @@ public enum StablefordEngine: GameDescriptor {
     public static let displayName = "Stableford"
     public static let summary = "Score points per hole instead of counting strokes. A bad hole costs you a point, not your round."
     public static let rules = """
-    Instead of adding up every stroke, each hole earns you points based on your net score against par: the standard table pays 2 for par, 3 for birdie, 4 for eagle, 5 for albatross, and 1 for bogey — anything worse than bogey scores zero.
+    Instead of adding up every stroke, each hole earns you points based on your net score against par: the standard table pays 2 for par, 3 for birdie, 4 for eagle, 5 for albatross, and 1 for bogey. Anything worse than bogey scores zero.
 
     That floor is the whole point. A single disaster hole costs you one point, not the ten strokes it actually took, so one blowup can't sink your whole round the way it would in stroke play. Highest total points at the end wins.
 

@@ -1,5 +1,6 @@
 import SwiftUI
 import RoundPlayEngine
+import RoundPlayData
 
 /// Every entry ever made in this round, newest first.
 ///
@@ -10,7 +11,7 @@ struct AuditLogView: View {
     let round: RoundRecord
 
     private var entries: [ScoreEventRecord] {
-        (round.events ?? []).sorted { $0.sequence > $1.sequence }
+        ScoreEventRecord.auditSorted(round.events ?? [])
     }
 
     private func name(for playerID: UUID) -> String {
@@ -27,6 +28,10 @@ struct AuditLogView: View {
             "\(name(for: record.playerID)) partnered with \(name(for: partner))"
         case .holeEvent(let kind):
             "\(name(for: record.playerID)) took the \(kind.rawValue)"
+        case .press(.accepted):
+            "\(name(for: record.playerID)) pressed"
+        case .press(.declined):
+            "\(name(for: record.playerID)) passed on the press"
         case .clearStrokes:
             "Cleared \(name(for: record.playerID))'s score"
         case .clearHoleEvent(let kind):
@@ -48,7 +53,7 @@ struct AuditLogView: View {
 
             ForEach(entries) { record in
                 VStack(alignment: .leading, spacing: 2) {
-                    RoundPlayTypography.headline("Hole \(record.hole) — \(describe(record))")
+                    RoundPlayTypography.headline("Hole \(record.hole): \(describe(record))")
                     Text("Entered by \(record.enteredByName) · \(record.recordedAt, style: .time)")
                         .font(RoundPlayFont.archivo(13))
                         .foregroundStyle(.secondary)
@@ -58,7 +63,7 @@ struct AuditLogView: View {
 
             if !entries.isEmpty {
                 Section {
-                    RoundPlayTypography.eyebrow("Corrections append — nothing is overwritten, so a silent edit is impossible")
+                    RoundPlayTypography.eyebrow("Corrections append. Nothing is overwritten, so a silent edit is impossible")
                         .foregroundStyle(.secondary)
                         .listRowSeparator(.hidden)
                 }

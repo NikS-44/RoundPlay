@@ -1,5 +1,6 @@
 import SwiftUI
 import RoundPlayEngine
+import RoundPlayData
 
 /// The landing screen for a finished round — a themed summary card, not another spreadsheet.
 /// Money at a glance, one tap to share or settle up, and links out to the full scorecard and
@@ -87,7 +88,7 @@ struct RoundSummaryView: View {
                 RoundPlaySectionHeader("Final Scores")
             } footer: {
                 if isPartialRound {
-                    RoundPlayTypography.caption("This round ended early — totals cover the holes that were scored.")
+                    RoundPlayTypography.caption("This round ended early. Totals cover the holes that were scored.")
                         .foregroundStyle(.secondary)
                 }
             }

@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import RoundPlayEngine
+import RoundPlayData
 
 /// Round setup: course, player count, who you know, fill in the rest, games. Every step is one
 /// focused screen with one job — no scrolling past a stepper to find a list, no combined form.
@@ -259,7 +260,7 @@ private struct KnownPlayersStep: View {
                     ContentUnavailableView(
                         "No one in your roster yet",
                         systemImage: "person.2",
-                        description: Text("That's fine — everyone can be filled in on the next screen.")
+                        description: Text("That's fine. Everyone can be filled in on the next screen.")
                     )
                 } else {
                     ForEach(filtered) { player in
@@ -332,7 +333,7 @@ private struct FillRemainingStep: View {
                         .roundPlayListRowSeparatorFullWidth()
                     }
                 } footer: {
-                    RoundPlayTypography.caption("Placeholder names are random and only used for this round. Tap one to give it a real name — that saves it to your roster.")
+                    RoundPlayTypography.caption("Placeholder names are random and only used for this round. Tap one to give it a real name, which saves it to your roster.")
                         .foregroundStyle(.secondary)
                 }
             }
@@ -395,7 +396,7 @@ private struct HoleSegmentStep: View {
 
                 HStack(spacing: 10) {
                     ForEach(options, id: \.self) { segment in
-                        HoleSegmentOptionButton(
+                        RoundBuilderChoiceCard(
                             title: label(for: segment),
                             isSelected: model.holeSegment == segment
                         ) {
@@ -410,38 +411,6 @@ private struct HoleSegmentStep: View {
         }
         .navigationTitle("Holes")
         .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-/// A big radio-style card for one hole-count option — three of these sit side by side, so the
-/// choice reads as a single obvious decision instead of a small segmented strip.
-private struct HoleSegmentOptionButton: View {
-    let title: String
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 10) {
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 22))
-                    .foregroundStyle(isSelected ? RoundPlayColors.accent : .secondary)
-                Text(title)
-                    .font(RoundPlayFont.archivo(16, .semiBold))
-                    .foregroundStyle(isSelected ? .primary : .secondary)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 20)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(isSelected ? RoundPlayColors.accent.opacity(0.12) : RoundPlayColors.fillSecondary)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(isSelected ? RoundPlayColors.accent : Color.clear, lineWidth: 2)
-            )
-        }
-        .buttonStyle(.plain)
     }
 }
 

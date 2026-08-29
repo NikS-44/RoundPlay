@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import UIKit
 import RoundPlayEngine
+import RoundPlayData
 
 /// One hole, one screen — the paper scorecard.
 ///
@@ -152,6 +153,12 @@ struct HoleScreenView: View {
             ScrollViewReader { scrollProxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
+                    // Above the scores because it is a question about the hole nobody has played
+                    // yet, and because money agreed after the fact isn't agreed at all. It does
+                    // not gate the strips the way the Wolf's declaration does — a group that
+                    // would rather just play on can score straight through it.
+                    if let pressOffer { pressPrompt(pressOffer) }
+
                     // Wolf declares before anyone's tee shot is scored — showing the score strips
                     // first would let the group enter scores while the Wolf is still deciding
                     // whether to go it alone, which the real game never allows. Once declared, the
@@ -163,6 +170,9 @@ struct HoleScreenView: View {
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack {
                                     RoundPlayTypography.headline(seat.name)
+                                    if let team = round.bestBallTeamLabel(for: seat) {
+                                        BestBallTeamBadge(team: team)
+                                    }
                                     if state.strokesReceived(hole: hole, player: seat.playerID) > 0 {
                                         RoundPlayTypography.eyebrow("+1 stroke")
                                             .foregroundStyle(RoundPlayColors.accent)
@@ -392,6 +402,35 @@ struct HoleScreenView: View {
         }
     }
 
+    /// The press question, but only on the hole the press would start on.
+    ///
+    /// Recomputed from the round rather than held in `@State`: correcting a score back on hole 2
+    /// has to be able to take the question on hole 3 away again.
+    private var pressOffer: NassauEngine.PressOffer? {
+        // Re-opening a finished round to fix a score is not the moment to be offered a new bet.
+        guard !isPostCompletionEdit else { return nil }
+        guard let offer = EngineBridge.nassauPressOffer(for: round, course: course),
+              offer.hole == hole else { return nil }
+        return offer
+    }
+
+    @ViewBuilder
+    private func pressPrompt(_ offer: NassauEngine.PressOffer) -> some View {
+        let names = round.orderedSeats.reduce(into: [UUID: String]()) { $0[$1.playerID] = $1.name }
+        PressPromptView(
+            offer: offer,
+            trailingName: names[offer.trailingPlayerID] ?? "They",
+            leadingName: names[offer.leadingPlayerID] ?? "the other side"
+        ) { decision in
+            guard let scorekeeper else { return }
+            try? EngineBridge.appendPress(
+                decision, hole: offer.hole, playerID: offer.trailingPlayerID, to: round,
+                enteredBy: scorekeeper.playerID, enteredByName: scorekeeper.name,
+                in: modelContext
+            )
+        }
+    }
+
     @ViewBuilder
     private var holeEventsPrompt: some View {
         let winners = HoleEventKind.allCases.reduce(into: [HoleEventKind: UUID]()) { partial, kind in
@@ -575,8 +614,8 @@ private struct IncompleteHoleBanner: View {
 
     private var message: String {
         needsHoleEvents
-            ? "This hole isn't finished — every player needs a score, and each tally needs a winner."
-            : "This hole is missing a score — enter every player before finishing."
+            ? "This hole isn't finished. Every player needs a score, and each tally needs a winner."
+            : "This hole is missing a score. Enter every player before finishing."
     }
 
     var body: some View {

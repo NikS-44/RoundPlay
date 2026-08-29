@@ -48,7 +48,7 @@ func codableRoundTrips() throws {
         .matchPlay(MatchPlayConfig(unitStake: 2)),
         .bestBall(BestBallConfig(unitStake: 2)),
         .skins(SkinsConfig(unitStake: 2.5)),
-        .nassau(NassauConfig(unitStake: 3, automaticPressAt: nil)),
+        .nassau(NassauConfig(unitStake: 3, pressAt: nil)),
         .stableford(.modified),
         .nines(NinesConfig(unitStake: 1)),
         .wolf(.standard(unitStake: 4)),

@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import RoundPlayData
 
 /// First-launch onboarding: name, handicap, favorite courses, then explore-or-play. Each step is
 /// its own screen with exactly one question — nothing to scroll past, nothing to skip over by
@@ -106,7 +107,7 @@ private struct OnboardingNameStep: View {
 
             onboardingHeadline("What's your name?")
                 .padding(.horizontal, 24)
-            onboardingSubtitle("So your scores and money are yours, not \"Player 1.\"")
+            onboardingSubtitle("So your scorecard is yours, not \"Player 1.\"")
                 .padding(.horizontal, 32)
 
             VStack(spacing: 10) {
@@ -174,7 +175,7 @@ private struct OnboardingHandicapStep: View {
 
             onboardingHeadline("What's your handicap?")
                 .padding(.horizontal, 24)
-            onboardingSubtitle("Optional — it's how strokes get split fairly. Skip it if you don't know it yet.")
+            onboardingSubtitle("Optional. It's how strokes get split fairly. Skip it if you don't know it yet.")
                 .padding(.horizontal, 32)
 
             RoundPlayList.plain {
@@ -229,13 +230,13 @@ private struct OnboardingPitchStep: View {
         let detail: String
     }
 
-    /// Written for a foursome playing for money, not for the App Store listing — each line names
-    /// the specific chore we take off them.
+    /// Written for the group that already plays these games, not for the App Store listing —
+    /// each line names the specific chore we take off them.
     private let pitches: [Pitch] = [
         Pitch(
             icon: "flag.2.crossed.fill",
             title: "Every game you actually play",
-            detail: "Nassau, Skins, Wolf, Bingo Bango Bongo and more — scored hole by hole as you go."
+            detail: "Nassau, Skins, Wolf, Bingo Bango Bongo and more, scored hole by hole as you go."
         ),
         Pitch(
             icon: "figure.golf",
@@ -244,8 +245,8 @@ private struct OnboardingPitchStep: View {
         ),
         Pitch(
             icon: "dollarsign.circle.fill",
-            title: "Nobody settles up by hand",
-            detail: "We total the bets and tell you exactly who owes who — before you reach the parking lot."
+            title: "Nobody totals it by hand",
+            detail: "Every game totalled for you, so the card is square before you reach the parking lot."
         )
     ]
 
@@ -345,7 +346,7 @@ private struct OnboardingFavoritesStep: View {
                         .font(RoundPlayFont.archivo(32, .black))
                         .tracking(-1)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("Optional — pick the ones you play most. You can search even without sharing your location.")
+                    Text("Optional. Pick the ones you play most. You can search even without sharing your location.")
                         .font(RoundPlayFont.archivo(16))
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

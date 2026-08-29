@@ -59,9 +59,9 @@ public enum WolfEngine: GameDescriptor {
     public static let displayName = "Wolf"
     public static let summary = "Take turns being the Wolf. Pick a partner off the tee, or take on all three alone for quadruple points."
     public static let rules = """
-    Each hole has a Wolf, rotating through the group in tee order. After watching everyone else's tee shot, the Wolf either picks a partner for that hole — the two of you play your better ball against the other two's better ball — or goes it alone as a Lone Wolf against the whole field.
+    Each hole has a Wolf, rotating through the group in tee order. After watching everyone else's tee shot, the Wolf either picks a partner for that hole (the two of you play your better ball against the other two's better ball) or goes it alone as a Lone Wolf against the whole field.
 
-    A partnered win splits the points between the Wolf and their partner; a field win against them splits points among the other three. Go Lone Wolf and win, and you take quadruple points solo — but lose, and each opponent scores against you too. It's the highest-risk, highest-reward call in the round.
+    A partnered win splits the points between the Wolf and their partner; a field win against them splits points among the other three. Go Lone Wolf and win, and you take quadruple points solo, but lose and each opponent scores against you too. It's the highest-risk, highest-reward call in the round.
 
     Needs three, four, or five players. With four, the rotation doesn't divide evenly into 18 holes, so seats one and two simply get a fifth turn as Wolf.
     """
@@ -112,14 +112,14 @@ public enum WolfEngine: GameDescriptor {
                 let award = isLone ? config.loneWolfWinPoints : config.partnerWinPoints
                 for player in wolfTeam { points[player, default: 0] += award }
                 text = isLone
-                    ? "Hole \(hole): \(wolfSeat.name) went Lone Wolf and won — \(award) points."
-                    : "Hole \(hole): \(names(wolfTeam, in: state)) win the hole — \(award) point each."
+                    ? "Hole \(hole): \(wolfSeat.name) went Lone Wolf and won. \(award) points."
+                    : "Hole \(hole): \(names(wolfTeam, in: state)) win the hole. \(award) point each."
             } else {
                 let award = isLone ? config.loneWolfLossPoints : config.fieldWinPoints
                 for player in field { points[player, default: 0] += award }
                 text = isLone
-                    ? "Hole \(hole): \(wolfSeat.name)'s Lone Wolf failed — \(award) point to each opponent."
-                    : "Hole \(hole): \(names(field, in: state)) take the hole — \(award) point each."
+                    ? "Hole \(hole): \(wolfSeat.name)'s Lone Wolf failed. \(award) point to each opponent."
+                    : "Hole \(hole): \(names(field, in: state)) take the hole. \(award) point each."
             }
 
             explanations.append(HoleExplanation(hole: hole, text: text))

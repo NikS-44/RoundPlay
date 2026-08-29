@@ -1,0 +1,28 @@
+{
+  // roundplay.app is an assets-only Worker: no `main`, no server code, just the static files in
+  // ./public. Deploy from this directory with:  npx wrangler deploy
+  //
+  // The site lives in ./public rather than beside this file so that the deploy config, and
+  // anything else that lands in this directory (wrangler's own .wrangler cache, which holds the
+  // account id and email), can never be uploaded as a public asset.
+  "name": "blue-wave-596a",
+  "compatibility_date": "2026-08-10",
+
+  // `routes` is deliberately omitted. The custom domain is attached to the Worker in the
+  // dashboard, so leaving it out here publishes a new version without touching that attachment.
+
+  "assets": {
+    "directory": "./public",
+
+    // Serve /privacy directly instead of redirecting it to /privacy/. This matches the
+    // <link rel="canonical"> on every page and the URLs in sitemap.xml. The default,
+    // "auto-trailing-slash", would 301 each of those paths and leave every canonical pointing at
+    // a URL that is not the one actually served.
+    "html_handling": "drop-trailing-slash",
+
+    // Serve the branded /404.html for unmatched paths. The default, "single-page-application",
+    // would return index.html with a 200 for every mistyped URL and let search engines index
+    // endless duplicates of the home page.
+    "not_found_handling": "404-page"
+  }
+}

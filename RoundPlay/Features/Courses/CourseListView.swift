@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import CoreLocation
+import RoundPlayData
 
 /// Find a course — nearest, favorited, recently played, or searched from the bundled OpenGolf
 /// catalog. Manual entry (`CourseEntryView`) is the fallback for a course the catalog doesn't

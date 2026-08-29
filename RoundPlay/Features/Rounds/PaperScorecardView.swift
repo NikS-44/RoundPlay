@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import RoundPlayEngine
+import RoundPlayData
 
 /// One minimum-cash-flow payment: `debtorName` pays `creditorName` `amount`.
 struct SettlementPayment: Identifiable {
@@ -81,14 +82,14 @@ enum RoundShareContent {
     static func settlementSummaryText(round: RoundRecord, course: Course) -> String {
         let settlements = EngineBridge.settlements(for: round, course: course)
         guard !settlements.isEmpty else {
-            return "\(round.courseName) — no games played, nothing owed."
+            return "\(round.courseName): no games played, nothing owed."
         }
         let gameNames = (round.games ?? []).compactMap { $0.gameType.map { GameLibrary.metadata(for: $0).displayName } }
         let payments = settlementPayments(round: round, course: course)
         let lines = payments.map { "\($0.debtorName) owes \($0.creditorName) \($0.amount.formatted(.currency(code: "USD")))" }
 
-        var text = "\(round.courseName) — \(gameNames.joined(separator: ", "))\n"
-        text += lines.isEmpty ? "Everyone's settled up — no money owed." : lines.joined(separator: "\n")
+        var text = "\(round.courseName): \(gameNames.joined(separator: ", "))\n"
+        text += lines.isEmpty ? "Everyone's settled up, no money owed." : lines.joined(separator: "\n")
         return text
     }
 }
@@ -184,46 +185,26 @@ private struct ShareableRoundCard: View {
     }
 }
 
-/// A read-only grid scorecard for a finished round — hole numbers across the top, par and stroke
-/// index below, one row per player underneath. This is the shape everyone already knows from the
-/// paper card in the cart, not another hole-by-hole flip-through.
-struct PaperScorecardView: View {
-    let round: RoundRecord
-    let course: Course
-
-    var body: some View {
-        ScorecardGrid(round: round, course: course)
-            .navigationTitle("Scorecard")
-            .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-/// The full-screen, auto-rotated-to-landscape presentation — same grid, more width to show more
-/// holes at once without scrolling. Flips the device to landscape on appearance and hands it back
-/// to portrait the moment this closes, since the rest of the app is portrait-only.
+/// The read-only grid, shown in landscape as the round's Scorecard tab. Hole numbers across the
+/// top, par and stroke index below, one row per player underneath: the shape everyone already
+/// knows from the paper card in the cart.
+///
+/// Landscape because an 18-hole card is 1,076pt wide and portrait can only ever show a third of
+/// it. Rotation is driven by `RoundTabsView` from the selected tab rather than from this view's
+/// lifecycle, and there is no close button because the tab bar is the way out.
 struct FullScreenScorecardView: View {
     let round: RoundRecord
     let course: Course
-    @Environment(\.dismiss) private var dismiss
+
+    /// Scrolled to and tinted on appear. Nil for the share render, which has no "current" hole.
+    var focusHole: Int?
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
+        ZStack {
             RoundPlayColors.pageBackground.ignoresSafeArea()
-
-            ScorecardGrid(round: round, course: course)
+            ScorecardGrid(round: round, course: course, focusHole: focusHole)
                 .padding(.top, 8)
-
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 26))
-                    .foregroundStyle(.secondary, RoundPlayColors.fillSecondary)
-            }
-            .padding(12)
         }
-        .onAppear { OrientationLock.shared.requestLandscape() }
-        .onDisappear { OrientationLock.shared.requestPortrait() }
     }
 }
 
@@ -238,6 +219,10 @@ private struct ScorecardGrid: View {
     /// plain white background instead of the app's themed one, since a shared image should look
     /// right regardless of the recipient's system appearance.
     var forSharing: Bool = false
+
+    /// When set, this hole's column is scrolled into view on appear and its header is tinted, so
+    /// opening the card mid-round lands on the hole being played instead of hole 1.
+    var focusHole: Int?
 
     private var state: RoundState {
         EngineBridge.roundState(for: round, course: course)
@@ -282,8 +267,12 @@ private struct ScorecardGrid: View {
             rowLabelCell("S.I.")
             rowDivider
             ForEach(Array(round.orderedSeats.enumerated()), id: \.element.id) { index, seat in
-                rowLabelCell(seat.name, subtitle: "HCP \(seat.courseHandicap)")
-                    .background(rowTint(index))
+                rowLabelCell(
+                    seat.name,
+                    subtitle: "HCP \(seat.courseHandicap)",
+                    team: round.bestBallTeamLabel(for: seat)
+                )
+                .background(rowTint(index))
                 rowDivider
             }
         }
@@ -338,7 +327,13 @@ private struct ScorecardGrid: View {
                 HStack(spacing: 0) {
                     labelColumn
                     ScrollView(.horizontal, showsIndicators: false) {
-                        contentColumn
+                        ScrollViewReader { proxy in
+                            contentColumn
+                                .onAppear {
+                                    guard let focusHole else { return }
+                                    proxy.scrollTo(focusHole, anchor: .center)
+                                }
+                        }
                     }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -355,13 +350,24 @@ private struct ScorecardGrid: View {
 
     private var holeRow: some View {
         HStack(spacing: 0) {
-            ForEach(front, id: \.self) { hole in cell("\(hole)") }
+            ForEach(front, id: \.self) { hole in holeCell(hole) }
             if showsOutIn { sumCell("OUT").fontWeight(.bold) }
-            ForEach(back, id: \.self) { hole in cell("\(hole)") }
+            ForEach(back, id: \.self) { hole in holeCell(hole) }
             sumCell(showsOutIn ? "IN" : "TOT").fontWeight(.bold)
             if showsOutIn { sumCell("TOT").fontWeight(.bold) }
         }
         .background(RoundPlayColors.fillSecondary)
+    }
+
+    /// The hole number, carrying the scroll anchor and the current-hole tint. The anchor is on
+    /// this row only — scrolling it into view brings the whole column with it, since every row
+    /// shares one horizontal `ScrollView`.
+    private func holeCell(_ hole: Int) -> some View {
+        let isFocused = hole == focusHole
+        return cell("\(hole)")
+            .foregroundStyle(isFocused ? Color.white : Color.primary)
+            .background(isFocused ? RoundPlayColors.holeActive : .clear)
+            .id(hole)
     }
 
     private var parRow: some View {
@@ -441,12 +447,17 @@ private struct ScorecardGrid: View {
             .frame(width: sumCellWidth, height: rowHeight)
     }
 
-    private func rowLabelCell(_ title: String, subtitle: String? = nil) -> some View {
+    private func rowLabelCell(_ title: String, subtitle: String? = nil, team: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 1) {
-            Text(title)
-                .font(RoundPlayFont.archivo(16, .semiBold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+            HStack(spacing: 5) {
+                Text(title)
+                    .font(RoundPlayFont.archivo(16, .semiBold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                if let team {
+                    BestBallTeamBadge(team: team)
+                }
+            }
             if let subtitle {
                 Text(subtitle)
                     .font(RoundPlayFont.archivo(12))
@@ -461,14 +472,10 @@ private struct ScorecardGrid: View {
 }
 
 #Preview("Light") {
-    NavigationStack {
-        PaperScorecardView(round: PreviewData.sampleRound, course: .previewCourse)
-    }
+    FullScreenScorecardView(round: PreviewData.sampleRound, course: .previewCourse, focusHole: 7)
 }
 
 #Preview("Dark") {
-    NavigationStack {
-        PaperScorecardView(round: PreviewData.sampleRound, course: .previewCourse)
-    }
-    .preferredColorScheme(.dark)
+    FullScreenScorecardView(round: PreviewData.sampleRound, course: .previewCourse, focusHole: 7)
+        .preferredColorScheme(.dark)
 }

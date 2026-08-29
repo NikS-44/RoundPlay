@@ -2,6 +2,7 @@ import Testing
 import Foundation
 import SwiftData
 import RoundPlayEngine
+import RoundPlayData
 @testable import RoundPlay
 
 private let testCourseID = UUID(uuidString: "84000000-0000-0000-0000-000000000001")!
@@ -61,9 +62,9 @@ func roundRecordBehavior() {
 @Test("Game and score records preserve engine values through JSON storage")
 func persistedEngineValues() throws {
     let context = try inMemoryContext()
-    let game = try GameInstanceRecord(configuration: .nassau(NassauConfig(unitStake: 5, automaticPressAt: nil)))
+    let game = try GameInstanceRecord(configuration: .nassau(NassauConfig(unitStake: 5, pressAt: nil)))
     #expect(game.gameType == .nassau)
-    #expect(game.configuration == .nassau(NassauConfig(unitStake: 5, automaticPressAt: nil)))
+    #expect(game.configuration == .nassau(NassauConfig(unitStake: 5, pressAt: nil)))
 
     let event = try ScoreEventRecord(hole: 3, playerID: testCourseID, payload: .wolfDeclaration(.lone), enteredBy: testCourseID, enteredByName: "Keeper", sequence: 4)
     #expect(event.payload == .wolfDeclaration(.lone))

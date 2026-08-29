@@ -3,17 +3,17 @@ import SwiftData
 import RoundPlayEngine
 
 /// The only seam between SwiftData and the scoring engine.
-///
-/// Views call this and never assemble `RoundState` themselves, so the record→value-type mapping
-/// is defined exactly once.
-enum EngineBridge {
+public enum EngineBridge {
 
-    enum BridgeError: Error {
+    public enum BridgeError: Error {
         case courseUnavailable
         case invalidEvent
     }
 
-    static func roundState(for round: RoundRecord, course: Course) -> RoundState {
+    /// Optional hook fired after a local write so each platform can push a sync payload.
+    nonisolated(unsafe) public static var onLocalChange: (() -> Void)?
+
+    public static func roundState(for round: RoundRecord, course: Course) -> RoundState {
         RoundState(
             log: (round.events ?? []).compactMap(\.engineEvent),
             seats: round.orderedSeats.map(\.engineSeat),
@@ -23,9 +23,7 @@ enum EngineBridge {
         )
     }
 
-    /// Settles every game in the round. A game whose configuration fails to decode, or whose
-    /// player count no longer fits, is skipped rather than crashing the dashboard.
-    static func settlements(for round: RoundRecord, course: Course) -> [Settlement] {
+    public static func settlements(for round: RoundRecord, course: Course) -> [Settlement] {
         let state = roundState(for: round, course: course)
         return (round.games ?? []).compactMap { game in
             guard let configuration = game.configuration else { return nil }
@@ -33,10 +31,17 @@ enum EngineBridge {
         }
     }
 
-    // MARK: - Appending events
+    public static func nassauPressOffer(for round: RoundRecord, course: Course) -> NassauEngine.PressOffer? {
+        let config = (round.games ?? []).compactMap { game -> NassauConfig? in
+            guard case .nassau(let config) = game.configuration else { return nil }
+            return config
+        }.first
+        guard let config else { return nil }
+        return NassauEngine.pressOffer(state: roundState(for: round, course: course), config: config)
+    }
 
     @discardableResult
-    static func append(
+    public static func append(
         payload: ScoreEventPayload,
         hole: Int,
         playerID: UUID,
@@ -57,10 +62,11 @@ enum EngineBridge {
         round.events = (round.events ?? []) + [record]
         context.insert(record)
         try context.save()
+        onLocalChange?()
         return record
     }
 
-    static func appendStrokes(
+    public static func appendStrokes(
         _ strokes: Int, hole: Int, playerID: UUID, to round: RoundRecord,
         enteredBy: UUID, enteredByName: String, in context: ModelContext
     ) throws {
@@ -68,7 +74,7 @@ enum EngineBridge {
                    to: round, enteredBy: enteredBy, enteredByName: enteredByName, in: context)
     }
 
-    static func clearStrokes(
+    public static func clearStrokes(
         hole: Int, playerID: UUID, to round: RoundRecord,
         enteredBy: UUID, enteredByName: String, in context: ModelContext
     ) throws {
@@ -76,7 +82,7 @@ enum EngineBridge {
                    to: round, enteredBy: enteredBy, enteredByName: enteredByName, in: context)
     }
 
-    static func clearHoleEvent(
+    public static func clearHoleEvent(
         _ kind: HoleEventKind, hole: Int, to round: RoundRecord,
         enteredBy: UUID, enteredByName: String, in context: ModelContext
     ) throws {
@@ -84,7 +90,7 @@ enum EngineBridge {
                    to: round, enteredBy: enteredBy, enteredByName: enteredByName, in: context)
     }
 
-    static func appendWolfDeclaration(
+    public static func appendWolfDeclaration(
         _ declaration: WolfDeclaration, hole: Int, wolfID: UUID, to round: RoundRecord,
         enteredBy: UUID, enteredByName: String, in context: ModelContext
     ) throws {
@@ -92,7 +98,15 @@ enum EngineBridge {
                    to: round, enteredBy: enteredBy, enteredByName: enteredByName, in: context)
     }
 
-    static func appendHoleEvent(
+    public static func appendPress(
+        _ decision: PressDecision, hole: Int, playerID: UUID, to round: RoundRecord,
+        enteredBy: UUID, enteredByName: String, in context: ModelContext
+    ) throws {
+        try append(payload: .press(decision), hole: hole, playerID: playerID,
+                   to: round, enteredBy: enteredBy, enteredByName: enteredByName, in: context)
+    }
+
+    public static func appendHoleEvent(
         _ kind: HoleEventKind, hole: Int, playerID: UUID, to round: RoundRecord,
         enteredBy: UUID, enteredByName: String, in context: ModelContext
     ) throws {

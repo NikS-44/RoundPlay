@@ -35,6 +35,27 @@ struct RoundPlaySectionHeader: View {
     }
 }
 
+// MARK: - Best Ball team badge
+
+/// The "A"/"B" tag shown beside a player's name when a round is playing Best Ball.
+///
+/// Small and quiet on purpose: it's a persistent fact about the round rather than something that
+/// changes hole to hole, so it should be readable at a glance and invisible the rest of the time.
+struct BestBallTeamBadge: View {
+    let team: String
+
+    var body: some View {
+        Text(team)
+            .font(RoundPlayFont.plexMono(10, .semiBold))
+            .foregroundStyle(RoundPlayColors.accent)
+            .frame(width: 16, height: 16)
+            .background(
+                Circle().fill(RoundPlayColors.accent.opacity(0.15))
+            )
+            .accessibilityLabel("Team \(team)")
+    }
+}
+
 // MARK: - Hub row
 
 /// Icon + title + subtitle list row used by "pick a destination" screens.
@@ -114,6 +135,47 @@ struct RoundBuilderContinueButton: View {
         .padding(.top, 12)
         .padding(.bottom, 8)
         .background(.bar)
+    }
+}
+
+// MARK: - Round builder choice card
+
+/// A big radio-style card for one option in a round-builder step. Two to four sit side by side,
+/// so the choice reads as a single obvious decision instead of a small segmented strip — and each
+/// target is a thumb-sized card rather than a pill sized to its own text.
+struct RoundBuilderChoiceCard: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 10) {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 22))
+                    .foregroundStyle(isSelected ? RoundPlayColors.accent : .secondary)
+                Text(title)
+                    .font(RoundPlayFont.archivo(16, .semiBold))
+                    .foregroundStyle(isSelected ? .primary : .secondary)
+                    .multilineTextAlignment(.center)
+                    // Three cards across a narrow phone is tight for "Straight up". Wrapping is
+                    // fine; shrinking to a size nobody can read outdoors is not.
+                    .minimumScaleFactor(0.85)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 20)
+            .padding(.horizontal, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(isSelected ? RoundPlayColors.accent.opacity(0.12) : RoundPlayColors.fillSecondary)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(isSelected ? RoundPlayColors.accent : Color.clear, lineWidth: 2)
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 

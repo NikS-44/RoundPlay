@@ -18,7 +18,7 @@ public enum NinesEngine: GameDescriptor {
     public static let displayName = "Nines"
     public static let summary = "Nine points a hole for a threesome: 5 for low, 3 for middle, 1 for high."
     public static let rules = """
-    Nines is built for exactly three players — the only game in the library that is. Every hole splits nine points three ways by net score: 5 to whoever scores lowest, 3 for the middle score, 1 for the highest.
+    Nines is built for exactly three players, the only game in the library that is. Every hole splits nine points three ways by net score: 5 to whoever scores lowest, 3 for the middle score, 1 for the highest.
 
     Tie two scores and the points for the places they occupy get split between them, so the hole always hands out all nine points no matter how the ties fall.
 

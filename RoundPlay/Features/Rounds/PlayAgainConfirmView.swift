@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import RoundPlayEngine
+import RoundPlayData
 
 /// One screen with everything from a previous round already filled in — course, players, games,
 /// and stakes. Replaying a regular Thursday game should be one tap plus maybe one tweak, not the
@@ -24,7 +25,7 @@ struct PlayAgainConfirmView: View {
     }
 
     private var gamesSummary: String {
-        guard !model.configurations.isEmpty else { return "No games — plain stroke play" }
+        guard !model.configurations.isEmpty else { return "No games, plain stroke play" }
         return model.configurations
             .map { GameLibrary.metadata(for: $0.gameType).displayName }
             .joined(separator: ", ")
@@ -97,7 +98,7 @@ struct PlayAgainConfirmView: View {
                         .buttonStyle(RoundPlayRowButtonStyle())
                         .roundPlayListRowSeparatorFullWidth()
                     } header: {
-                        RoundPlaySectionHeader("Games & Bets")
+                        RoundPlaySectionHeader("Games & Stakes")
                             .foregroundStyle(.secondary)
                     }
                 }

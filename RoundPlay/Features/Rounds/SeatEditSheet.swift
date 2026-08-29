@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import RoundPlayData
 
 /// Rename a seat or fix its handicap mid-round. The handicap is always the seat's own copy —
 /// a round always settles using the number agreed on when it started, so a correction here fixes
@@ -53,10 +54,10 @@ struct SeatEditSheet: View {
                     RoundPlaySectionHeader("Name")
                 } footer: {
                     if linkedPlayer != nil {
-                        RoundPlayTypography.caption("This is \(linkedPlayer?.name ?? "a") from your roster — you can fix their name here and in the roster at the same time.")
+                        RoundPlayTypography.caption("This is \(linkedPlayer?.name ?? "a") from your roster. You can fix their name here and in the roster at the same time.")
                             .foregroundStyle(.secondary)
                     } else if isNameChanged {
-                        RoundPlayTypography.caption("Not in your roster yet — save it there so it's one tap away next time.")
+                        RoundPlayTypography.caption("Not in your roster yet. Save it there so it's one tap away next time.")
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -71,7 +72,7 @@ struct SeatEditSheet: View {
                 } header: {
                     RoundPlaySectionHeader("Course Handicap")
                 } footer: {
-                    RoundPlayTypography.caption("This round only — your roster handicap is unchanged.")
+                    RoundPlayTypography.caption("This round only. Your roster handicap is unchanged.")
                         .foregroundStyle(.secondary)
                 }
             }

@@ -14,6 +14,25 @@ enum RoundPlayList {
         .listStyle(.plain)
         .scrollDismissesKeyboard(.interactively)
     }
+
+    /// `plain`, with the list's scroll proxy handed to the content.
+    ///
+    /// For screens that reveal something below the fold — an expanding disclosure group, say —
+    /// and have to bring it into view themselves. Separately named rather than overloaded so no
+    /// call site has to think about which one a trailing closure resolves to.
+    @MainActor
+    @ViewBuilder
+    static func plainScrolling<Content: View>(
+        @ViewBuilder content: @escaping (ScrollViewProxy) -> Content
+    ) -> some View {
+        ScrollViewReader { proxy in
+            SwiftUI.List {
+                content(proxy)
+            }
+            .listStyle(.plain)
+            .scrollDismissesKeyboard(.interactively)
+        }
+    }
 }
 
 extension View {
@@ -36,10 +55,44 @@ private struct RoundPlayPrimaryButtonModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         if colorScheme == .dark {
-            content.buttonStyle(.bordered)
+            content.buttonStyle(RoundPlayDarkPrimaryButtonStyle())
         } else {
             content.buttonStyle(.borderedProminent)
         }
+    }
+}
+
+/// The dark-mode primary action.
+///
+/// The accent is a bright mint in dark mode, which rules out both system styles. `.borderedProminent`
+/// paints a full mint block with a white label — glare, and the label barely separates from its own
+/// fill. `.bordered` goes the other way: a neutral grey system fill that reads as a disabled chip,
+/// with nothing but the label colour to say it is the primary action. What was missing is an edge.
+/// An accent wash gives the shape a body, an accent border draws it, and the label sits in the same
+/// accent, so the button reads as primary without lighting up the page.
+struct RoundPlayDarkPrimaryButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    private var foreground: Color {
+        isEnabled ? RoundPlayColors.accent : Color(uiColor: .tertiaryLabel)
+    }
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(foreground)
+            // Floors a label-sized button at a comfortable tap target while leaving the taller
+            // full-width bars (which set their own `minHeight`) untouched.
+            .frame(minHeight: 28)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(
+                Capsule().fill(RoundPlayColors.accent.opacity(isEnabled ? 0.18 : 0.06))
+            )
+            .overlay(
+                Capsule().strokeBorder(foreground.opacity(isEnabled ? 0.9 : 0.25), lineWidth: 1.5)
+            )
+            .contentShape(Capsule())
+            .opacity(configuration.isPressed ? 0.6 : 1)
     }
 }
 

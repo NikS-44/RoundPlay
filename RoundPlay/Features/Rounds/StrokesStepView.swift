@@ -1,8 +1,9 @@
 import SwiftUI
 import SwiftData
 import RoundPlayEngine
+import RoundPlayData
 
-/// "Who's giving who shots?" — the step where a group agrees strokes before any money is on it.
+/// "Who's getting shots?" — the step where a group agrees strokes before any money is on it.
 ///
 /// The screen is built around one number per player: **the strokes they get**. Everything else —
 /// the mode, the allowance, the cap — exists to produce that number, so the number is what's big,
@@ -15,6 +16,8 @@ struct StrokesStepView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var editingSeat: RoundSeatDraft?
     @State private var isShowingAdvanced = false
+
+    private static let advancedRowID = "advanced"
 
     private var lowSeatName: String? {
         guard model.handicapSettings.mode == .offTheLow else { return nil }
@@ -47,22 +50,35 @@ struct StrokesStepView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            RoundPlayList.plain {
+            RoundPlayList.plainScrolling { scrollProxy in
                 RoundBuilderStepHeader(
                     step: model.stepNumber(for: .strokes),
                     totalSteps: model.totalSteps,
-                    title: "Who's giving who shots?"
+                    // "Who's giving who shots?" was the sentence a group says out loud, but it
+                    // reads as a grammar mistake on screen and asks about the wrong side of the
+                    // deal — every row below answers "gets N", not "gives N".
+                    title: "Who's getting shots?"
                 )
 
-                // Pill and explanation share one row rather than sitting in their own section —
+                // Cards and explanation share one row rather than sitting in their own section —
                 // as separate rows the default section spacing opened a gap under the explanation
                 // wide enough to read as the end of the screen.
                 VStack(alignment: .leading, spacing: 10) {
-                    SegmentedPill(
-                        options: StrokeMode.allCases,
-                        selection: $model.handicapSettings.mode,
-                        label: label(for:)
-                    )
+                    // The same cards as the front-9/back-9/all-18 step, not a segmented pill.
+                    // Both screens ask "pick one of three", and a pill sized to its own text made
+                    // "Full" a target a third the size of "Straight up".
+                    HStack(spacing: 10) {
+                        ForEach(StrokeMode.allCases, id: \.self) { mode in
+                            RoundBuilderChoiceCard(
+                                title: label(for: mode),
+                                isSelected: model.handicapSettings.mode == mode
+                            ) {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    model.handicapSettings.mode = mode
+                                }
+                            }
+                        }
+                    }
 
                     RoundPlayTypography.caption(modeExplanation)
                         .foregroundStyle(.secondary)
@@ -87,20 +103,44 @@ struct StrokesStepView: View {
                         // eyebrow is legible as a label on a card but disappears as a section
                         // header on a white list, especially outdoors.
                         RoundPlaySectionHeader("Strokes")
-                    } footer: {
-                        RoundPlayTypography.caption("Tap anyone to set their strokes by hand.")
-                            .foregroundStyle(.secondary)
                     }
+                    // No footer explaining that the rows are tappable. Each one carries a
+                    // chevron and a value; a line of text saying so is a caption nobody needs
+                    // and one more thing between the group and Advanced.
 
                     Section {
                         DisclosureGroup(isExpanded: $isShowingAdvanced) {
                             allowanceRow
+                            // The scroll target below. A `List` lays a DisclosureGroup's content
+                            // out as sibling rows rather than inside the label's frame, so
+                            // tagging the group itself gave `scrollTo` a row that was already
+                            // fully on screen — and it correctly did nothing. The last revealed
+                            // row is the one that actually has to come into view.
                             capRow
+                                .id(Self.advancedRowID)
                         } label: {
                             Text("Advanced")
                                 .font(RoundPlayFont.archivo(15, .semiBold))
                         }
                         .listRowSeparator(.hidden)
+                        // Advanced is the last thing on the screen, so opening it puts everything
+                        // it reveals below the fold — the group looked like it hadn't opened at
+                        // all until you happened to scroll.
+                        //
+                        // On the DisclosureGroup rather than the enclosing `Section`: a Section
+                        // is a list-structure builder, not a view, and an `onChange` attached to
+                        // one never runs.
+                        .onChange(of: isShowingAdvanced) { _, isExpanded in
+                            guard isExpanded else { return }
+                            Task {
+                                // After the disclosure's own animation, or the rows being
+                                // scrolled to do not exist yet.
+                                try? await Task.sleep(for: .milliseconds(250))
+                                withAnimation(.easeOut(duration: 0.25)) {
+                                    scrollProxy.scrollTo(Self.advancedRowID, anchor: .bottom)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -184,7 +224,7 @@ struct StrokesStepView: View {
                 Button {
                     model.handicapSettings.allowancePercent = recommended
                 } label: {
-                    RoundPlayTypography.caption("The games you picked recommend \(recommended)% — tap to use it.")
+                    RoundPlayTypography.caption("The games you picked recommend \(recommended)%. Tap to use it.")
                         .foregroundStyle(RoundPlayColors.accent)
                         .multilineTextAlignment(.leading)
                 }

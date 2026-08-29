@@ -2,10 +2,12 @@ import SwiftUI
 import SwiftData
 import UIKit
 import RoundPlayEngine
+import RoundPlayData
 
 /// The Rounds tab: start a round, or resume one in progress.
 struct RoundsHomeView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(RoundSyncSession.self) private var sync
     @Query(sort: \RoundRecord.startedAt, order: .reverse) private var rounds: [RoundRecord]
     @Query private var courses: [CourseRecord]
 
@@ -44,34 +46,137 @@ struct RoundsHomeView: View {
         }
     }
 
+    /// Height the current-round slot holds open whichever state is in it, so swapping a card for the
+    /// empty state moves nothing below. Comfortably clears both: an in-progress card runs ~265pt,
+    /// ~293pt when a long course name wraps to two lines, and the empty state ~235pt. Both are
+    /// centred in it.
+    private let slotHeight: CGFloat = 300
+
+    /// The top of the screen: whatever is in progress, or the invitation to start something.
+    ///
+    /// One fixed-height box holding both states, which is what keeps this stable. As separate list
+    /// rows, deleting the last in-progress round was a row delete plus a row insert that the List
+    /// played in sequence — the card collapsed (yanking Previous Rounds up) and only then did the
+    /// empty state expand and push it back down. A single row of a known height has nothing to diff
+    /// and nothing to resize, so the swap is a content change in place.
+    ///
+    /// The cost is that swipe-to-delete belongs to the row rather than to a card, so the slot
+    /// carries the swipe for the round it holds. A second round open at the same time is rare, and
+    /// it gets an ordinary row of its own below the slot (see `body`) with its own swipe — one
+    /// swipe shared by every card on screen would have no way to say which round it meant.
+    private var isEmpty: Bool { inProgress.isEmpty }
+
+    /// The round the slot holds: the first one in progress, if any. A collection rather than an
+    /// optional so the `ForEach` inside the slot is never itself inserted or removed.
+    private var slotRounds: [RoundRecord] { Array(inProgress.prefix(1)) }
+
+    /// Rounds in progress past the first, which sit in ordinary rows under the slot.
+    private var extraInProgress: [RoundRecord] { Array(inProgress.dropFirst()) }
+
+    /// One in-progress round, as the card you tap to pick it back up.
+    @ViewBuilder
+    private func inProgressCard(_ round: RoundRecord, course: Course) -> some View {
+        Button {
+            activeRound = round
+        } label: {
+            InProgressRoundCard(round: round, course: course)
+                .padding(.horizontal)
+                .padding(.vertical, 6)
+        }
+        .buttonStyle(.plain)
+        // The preview has to be spelled out. A `contextMenu` without one lifts the whole row, and
+        // the slot's row is a 300pt box that holds the empty state too — so long-pressing the card
+        // raised a white slab of the surrounding padding along with it. Naming the card as the
+        // preview scopes the lift to the card that was pressed.
+        .contextMenu {
+            Button(role: .destructive) {
+                delete(round)
+            } label: {
+                Label("Delete Round", systemImage: "trash")
+            }
+        } preview: {
+            InProgressRoundCard(round: round, course: course)
+        }
+    }
+
+    @ViewBuilder
+    private var currentSlot: some View {
+        // Both states are always in the tree, and only their opacity changes. An `if/else` here
+        // still inserts and removes views, which tears the row's subtree down and rebuilds it — and
+        // a List that is scrolled re-anchors when that happens, throwing the content up and then
+        // settling it somewhere else. Nothing is ever inserted or removed now, so there is no
+        // rebuild to re-anchor on.
+        ZStack {
+            StartRoundEmptyState(hasPreviousRounds: !earlier.isEmpty) { isCreatingRound = true }
+                .opacity(isEmpty ? 1 : 0)
+                .allowsHitTesting(isEmpty)
+
+            VStack(spacing: 0) {
+                ForEach(slotRounds) { round in
+                    if let course = course(for: round) {
+                        inProgressCard(round, course: course)
+                    }
+                }
+            }
+            .opacity(isEmpty ? 0 : 1)
+            .allowsHitTesting(!isEmpty)
+        }
+        // A hard cut, not a crossfade. The swipe-to-delete gesture runs its own animated
+        // transaction and the slot inherited it, so for a few frames both states were drawn at
+        // partial opacity and "Nothing in progress" sat on top of the near-black card.
+        .transaction { $0.animation = nil }
+        // A floor rather than a fixed height, and only while the slot is the whole story. The empty
+        // state and a single card both come in under it, so both render at exactly `slotHeight` and
+        // swapping one for the other moves nothing. With a second card below, that same floor pads
+        // ~40pt of dead space around the first one and reads as a gap between two cards that belong
+        // to the same stack — and the empty state cannot appear while a round is in progress, so
+        // there is nothing left to hold the box open for.
+        .frame(minHeight: extraInProgress.isEmpty ? slotHeight : 0)
+        .frame(maxWidth: .infinity)
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            if let round = slotRounds.first {
+                // Deliberately not `role: .destructive`. That role makes the List remove the row
+                // itself: it collapsed this 300pt row to nothing (throwing a scrolled list up ~83pt)
+                // and then re-inserted it once the state change produced a row again, which is the
+                // up-then-down jump. The row is never actually going away — only its contents
+                // change — so it must not be announced as a deletion. `.tint(.red)` keeps the
+                // destructive look.
+                Button {
+                    delete(round)
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+                .tint(.red)
+            }
+        }
+    }
+
     var body: some View {
         RoundPlayList.plain {
-            if inProgress.isEmpty {
-                StartRoundEmptyState { isCreatingRound = true }
-                    .listRowInsets(EdgeInsets())
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-            }
+            currentSlot
+                .listRowInsets(EdgeInsets())
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
 
-            ForEach(inProgress) { round in
+            // Rounds past the first are plain rows, which is the only way each card gets a swipe
+            // of its own: `swipeActions` belongs to a row, so cards stacked inside one row can
+            // only ever share a single swipe.
+            ForEach(extraInProgress) { round in
                 if let course = course(for: round) {
-                    Button {
-                        activeRound = round
-                    } label: {
-                        InProgressRoundCard(round: round, course: course)
-                    }
-                    .buttonStyle(.plain)
-                    .listRowInsets(EdgeInsets())
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                        Button(role: .destructive) {
-                            delete(round)
-                        } label: {
-                            Label("Delete", systemImage: "trash")
+                    inProgressCard(round, course: course)
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        // Destructive here, unlike the slot: this row really is going away, so
+                        // the List should animate it out.
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button(role: .destructive) {
+                                delete(round)
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                            .tint(.red)
                         }
-                        .tint(.red)
-                    }
                 }
             }
 
@@ -140,6 +245,9 @@ struct RoundsHomeView: View {
         .listSectionSpacing(.compact)
         .navigationTitle("Rounds")
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                SyncStatusGlyph(state: sync.connectionState)
+            }
             ToolbarItem(placement: .primaryAction) {
                 Menu {
                     Button {
@@ -275,38 +383,72 @@ private struct InProgressRoundCard: View {
         }
         .padding(18)
         .boardCard(cornerRadius: 16)
-        .padding(.horizontal)
-        .padding(.vertical, 6)
+        // Deliberately no outer margin here: the card ends where the board ends. Insetting it
+        // from inside meant the long-press preview — which is this view and everything it
+        // draws — came up as a card floating on a pale margin. The margin belongs to the
+        // layout around the card, so the call site owns it.
     }
 }
 
 /// The empty state when nothing is in progress: one unmissable way to begin, rather than a lone
 /// toolbar "+" a first-time user has no reason to notice.
+///
+/// One shape in both cases — badge, headline, a line of copy, button — because a returning user
+/// staring at a bare headline and a button got noticeably less than a first-timer did, and the
+/// screen looked unfinished for it. Only the wording changes: a first-timer is told what the app
+/// does, someone with rounds behind them is told what happens next.
 private struct StartRoundEmptyState: View {
+    var hasPreviousRounds: Bool = false
     let onStart: () -> Void
 
+    private var headline: String {
+        hasPreviousRounds ? "Nothing in progress" : "Your first round starts here"
+    }
+
+    private var detail: String {
+        hasPreviousRounds
+            ? "Start a round and we'll keep score for the group, handicaps and all."
+            : "Keep score for the whole group, handicaps applied automatically. Skins, Nassau, Wolf, and more."
+    }
+
     var body: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "flag.circle")
-                .font(.system(size: 44))
+        VStack(spacing: 0) {
+            // A tinted badge rather than a bare 44pt glyph. At that size the raw symbol was the
+            // loudest thing on the screen and outweighed the button it was meant to lead into.
+            Image(systemName: "flag.fill")
+                .font(.system(size: 19, weight: .semibold))
                 .foregroundStyle(RoundPlayColors.accent)
-            RoundPlayTypography.headline("No rounds in progress")
-            RoundPlayTypography.caption("Start a round, keep score for your group, and track the bets — Skins, Nassau, and more.")
+                .frame(width: 48, height: 48)
+                .background(Circle().fill(RoundPlayColors.accent.opacity(0.12)))
+                .padding(.bottom, 14)
+
+            RoundPlayTypography.headline(headline)
+                .multilineTextAlignment(.center)
+
+            RoundPlayTypography.caption(detail)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+                .lineSpacing(2)
+                // Capped so the line breaks at its own sentence boundary rather than running the
+                // width of a large iPhone and leaving a two-word orphan on the last line.
+                .frame(maxWidth: 270)
+                .padding(.top, 6)
+
+            // Sized to its label, not to the screen. A full-width 50pt bar on an otherwise empty
+            // screen reads as a form's submit button; a hugging control reads as an invitation.
             Button(action: onStart) {
                 Text("Start a Round")
-                    .font(RoundPlayFont.archivo(17, .semiBold))
-                    .frame(maxWidth: .infinity, minHeight: 50)
+                    .font(RoundPlayFont.archivo(16, .semiBold))
+                    .padding(.horizontal, 10)
             }
             .roundPlayPrimaryButtonStyle()
+            .controlSize(.large)
             .tint(RoundPlayColors.accent)
-            .padding(.top, 4)
+            .padding(.top, 20)
         }
-        .frame(maxWidth: .infinity)
         .padding(.horizontal, 24)
-        .padding(.top, 16)
-        .padding(.bottom, 8)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity)
     }
 }
 
@@ -350,13 +492,14 @@ private struct EarlierRoundRow: View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 3) {
                 RoundPlayTypography.headline(round.courseName)
-                // Players and date share a line — three stacked lines per round made the list
-                // scroll twice as far for the same information.
-                Text("\(playerNames) · \(round.startedAt.formatted(.dateTime.month(.abbreviated).day()))")
+                Text(playerNames)
                     .font(RoundPlayFont.archivo(13))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.tail)
+                Text(round.startedAt, format: .dateTime.month(.abbreviated).day())
+                    .font(RoundPlayFont.archivo(13))
+                    .foregroundStyle(.secondary)
             }
             Spacer()
             if let net {
@@ -380,13 +523,12 @@ struct RoundTabsView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
-    private enum RoundTab: Hashable { case summary, scorecard, standings }
+    private enum RoundTab: Hashable { case summary, hole, scorecard, standings }
     @State private var selection: RoundTab
     @State private var isEditingRound = false
     @State private var isEditingScores = false
     @State private var isConfirmingDelete = false
     @State private var isConfirmingFinishEarly = false
-    @State private var isFullScreen = false
     @State private var isShowingRoundOptions = false
     @State private var isSharingScorecard = false
     @State private var isSharingSettlement = false
@@ -399,7 +541,10 @@ struct RoundTabsView: View {
     init(round: RoundRecord, course: Course) {
         self.round = round
         self.course = course
-        _selection = State(initialValue: round.isComplete ? .summary : .scorecard)
+        // A round in progress opens on Hole, because the reason you opened it is to enter a score.
+        // The Scorecard tab is the landscape grid now, and landing there would rotate the phone
+        // before you had asked for anything.
+        _selection = State(initialValue: round.isComplete ? .summary : .hole)
     }
 
     private var hasGames: Bool { !(round.games ?? []).isEmpty }
@@ -421,12 +566,13 @@ struct RoundTabsView: View {
     /// the nav bar needs light text/icons there, same as the rest of the app's default dark-on-
     /// light everywhere else (the finished scorecard, Summary, Standings).
     private var showsDarkNavBar: Bool {
-        !round.isComplete && selection == .scorecard
+        !round.isComplete && selection == .hole
     }
 
     private var navigationTitleText: String {
         switch selection {
         case .summary: "Summary"
+        case .hole: "Hole"
         case .scorecard: "Scorecard"
         case .standings: "Standings"
         }
@@ -448,17 +594,23 @@ struct RoundTabsView: View {
                             course: course,
                             onShare: { isSharingScorecard = true },
                             onSettleUp: { isSharingSettlement = true },
-                            onShowScorecard: { isFullScreen = true },
+                            onShowScorecard: { selection = .scorecard },
                             onShowStandings: { selection = .standings }
                         )
                     }
                 }
-                Tab("Scorecard", systemImage: "square.grid.3x3", value: RoundTab.scorecard) {
-                    if round.isComplete {
-                        PaperScorecardView(round: round, course: course)
-                    } else {
+                if !round.isComplete {
+                    Tab("Hole", systemImage: "flag.fill", value: RoundTab.hole) {
                         HoleScreenView(round: round, course: course) { selection = .summary }
                     }
+                }
+                Tab("Scorecard", systemImage: "square.grid.3x3", value: RoundTab.scorecard) {
+                    FullScreenScorecardView(
+                        round: round,
+                        course: course,
+                        focusHole: EngineBridge.roundState(for: round, course: course)
+                            .currentHole(in: round.holeSegment)
+                    )
                 }
                 Tab("Standings", systemImage: "chart.bar", value: RoundTab.standings) {
                     RoundDashboardView(round: round, course: course)
@@ -469,6 +621,22 @@ struct RoundTabsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarBackButtonHidden(true)
             .toolbarColorScheme(showsDarkNavBar ? .dark : nil, for: .navigationBar)
+            // The scorecard is the one landscape screen in a portrait-only app. Rotation is driven
+            // from `selection` rather than the card's own onAppear/onDisappear because SwiftUI does
+            // not guarantee onDisappear fires when a tab is deselected, and a missed call would
+            // strand the whole app in landscape. Selection is state we own and can observe.
+            .onChange(of: selection, initial: true) { _, tab in
+                if tab == .scorecard {
+                    OrientationLock.shared.requestLandscape()
+                } else {
+                    OrientationLock.shared.requestPortrait()
+                }
+            }
+            // Leaving the round from the scorecard must hand portrait back too.
+            .onDisappear { OrientationLock.shared.requestPortrait() }
+            // The nav bar costs vertical space, which is the scarce dimension in landscape, and
+            // the tab already names the screen.
+            .toolbar(selection == .scorecard ? .hidden : .visible, for: .navigationBar)
             .toolbar {
                 // A generic "<" back button reads like undo or "go to the previous step" — this
                 // isn't a step in a flow, it's leaving the round entirely, so it gets an explicit
@@ -481,15 +649,6 @@ struct RoundTabsView: View {
                     }
                 }
                 if round.isComplete {
-                    if selection == .scorecard {
-                        ToolbarItem(placement: .primaryAction) {
-                            Button {
-                                isFullScreen = true
-                            } label: {
-                                Image(systemName: "arrow.up.left.and.arrow.down.right")
-                            }
-                        }
-                    }
                     ToolbarItem(placement: .primaryAction) {
                         Button {
                             isSharingScorecard = true
@@ -519,9 +678,6 @@ struct RoundTabsView: View {
                         isEditingScores = false
                     }
                 }
-            }
-            .fullScreenCover(isPresented: $isFullScreen) {
-                FullScreenScorecardView(round: round, course: course)
             }
             .sheet(isPresented: $isSharingScorecard) {
                 ShareSheet(items: shareItems)
@@ -555,11 +711,11 @@ struct RoundTabsView: View {
                 }
                 Button("Cancel", role: .cancel) {}
             }
-            .confirmationDialog(
-                "Finish this round now?",
-                isPresented: $isConfirmingFinishEarly,
-                titleVisibility: .visible
-            ) {
+            // Destructive, and an alert for the same reason Delete is: a yes/no question about an
+            // action that cannot be taken back. Nothing in the app ever clears `completedAt`, so
+            // finishing is one-way, and the message has to say so rather than only describing what
+            // happens to the unscored holes.
+            .alert("Finish this round now?", isPresented: $isConfirmingFinishEarly) {
                 Button("Finish Early", role: .destructive) {
                     round.completedAt = Date()
                     try? modelContext.save()
@@ -567,13 +723,14 @@ struct RoundTabsView: View {
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("Holes without a score for every player will be left blank. Standings only count what's been entered.")
+                Text("Holes without a score for every player will be left blank, and standings only count what's been entered. A finished round can't be reopened.")
             }
-            .confirmationDialog(
-                "Delete this round?",
-                isPresented: $isConfirmingDelete,
-                titleVisibility: .visible
-            ) {
+            // An alert, not a confirmation dialog. The other dialogs on this screen offer a choice
+            // between several actions, which is what an action sheet is for; this one asks a yes/no
+            // question about destroying something, which is what an alert is for. An alert also
+            // lands in the middle of the screen rather than under the thumb that just tapped
+            // Delete, so it is harder to confirm by accident.
+            .alert("Delete this round?", isPresented: $isConfirmingDelete) {
                 Button("Delete Round", role: .destructive) {
                     round.deletedAt = Date()
                     try? modelContext.save()
@@ -588,11 +745,14 @@ struct RoundTabsView: View {
 }
 
 #Preview("Light") {
-    NavigationStack { RoundsHomeView() }.modelContainer(PreviewData.container)
+    NavigationStack { RoundsHomeView() }
+        .modelContainer(PreviewData.container)
+        .environment(RoundSyncSession.shared)
 }
 
 #Preview("Dark") {
     NavigationStack { RoundsHomeView() }
         .modelContainer(PreviewData.container)
+        .environment(RoundSyncSession.shared)
         .preferredColorScheme(.dark)
 }

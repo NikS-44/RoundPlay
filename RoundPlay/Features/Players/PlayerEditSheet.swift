@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import RoundPlayData
 
 /// Add or edit someone in your roster.
 ///

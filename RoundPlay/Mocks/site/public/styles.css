@@ -1,0 +1,239 @@
+/* RoundPlay marketing site. Shared by the landing page and the legal/support pages.
+   Extracted from index.html once the site grew past one page. */
+
+:root{
+  --board:#0E1512; --fairway:#1B7349; --grass:#2E9E68; --grass-lt:#4FBD87;
+  --chalk:#F5F3EE; --pin:#E0A32E; --up:#17853F; --down:#BF3329;
+  /* Small secondary text sits at .62 and above: .45/.35 on the chalk page measured under the
+     4.5:1 text minimum, which is exactly the outdoor-legibility floor the app's palette holds. */
+  --ink-72:rgba(14,21,18,.72); --ink-62:rgba(14,21,18,.62); --ink-45:rgba(14,21,18,.45);
+  --paper-72:rgba(245,243,238,.72); --paper-62:rgba(245,243,238,.62);
+  --pad:40px;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--chalk);color:var(--board);
+  font-family:Archivo,system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+img,svg{display:block;max-width:100%}
+a{color:var(--fairway);text-decoration:none}
+a:hover{color:var(--board)}
+/* Underlines are removed globally, so keyboard focus needs a ring of its own or it is invisible. */
+a:focus-visible,button:focus-visible{outline:2px solid var(--grass);outline-offset:3px;border-radius:4px}
+.top a:focus-visible{outline-color:var(--grass-lt)}
+
+.wrap{max-width:1120px;margin:0 auto;padding:0 var(--pad)}
+.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+.eyebrow{font:500 11px/1 "IBM Plex Mono",monospace;letter-spacing:.18em}
+h1,h2,h3{margin:0;font-weight:800;font-stretch:118%;letter-spacing:-.035em;line-height:1.02;text-wrap:balance}
+p{margin:0;text-wrap:pretty}
+
+/* Lets keyboard users jump the nav; visible only once focused. */
+.skip{position:absolute;left:-9999px;top:0;background:var(--chalk);color:var(--board);
+  padding:10px 16px;border-radius:0 0 8px 0;font:600 14px/1 Archivo,sans-serif;z-index:10}
+.skip:focus{left:0}
+
+/* ---- header ---- */
+.top{background:var(--board);color:var(--chalk)}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:24px 0;gap:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:11px}
+.brand span{font-size:20px;font-weight:800;font-stretch:118%;letter-spacing:-.015em}
+.navlinks{display:flex;align-items:center;gap:28px}
+.navlinks a{font:500 14.5px/1 Archivo,sans-serif;color:var(--paper-72)}
+.navlinks a:hover{color:var(--chalk)}
+.btn{display:inline-flex;align-items:center;justify-content:center;height:40px;padding:0 18px;
+  border-radius:10px;background:var(--fairway);color:#fff;font:700 14.5px/1 Archivo,sans-serif}
+.btn:hover{background:var(--grass);color:#fff}
+
+/* ---- hero ---- */
+.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center;padding:52px 0 64px}
+.hero h1{font-size:clamp(40px,6.2vw,72px);letter-spacing:-.04em;line-height:.96;margin-top:22px}
+/* The game list is long enough to wrap on most widths. `.eyebrow`'s line-height of 1 collides
+   when it does, so this variant gets leading of its own and a display so the margin applies. */
+.hero .eyebrow{color:var(--pin);display:block;line-height:1.7;max-width:640px}
+.hero .lede{font:400 19px/1.55 Archivo,sans-serif;color:var(--paper-72);max-width:470px;margin-top:22px}
+.cta{display:flex;flex-wrap:wrap;gap:14px 20px;align-items:center;margin-top:32px}
+.appstore{display:inline-flex;align-items:center;gap:11px;height:54px;padding:0 22px;border-radius:12px;
+  background:var(--chalk);color:var(--board)}
+.appstore:hover{background:#fff;color:var(--board)}
+.appstore svg{flex:none}
+.appstore .lines{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.appstore .sm{display:block;font:500 9.5px/1 Archivo,sans-serif;letter-spacing:.01em;color:var(--ink-62)}
+.appstore .lg{display:block;font:700 18px/1 Archivo,sans-serif;letter-spacing:-.015em}
+.joinnote{display:flex;flex-direction:column;gap:3px}
+.joinnote b{font:600 14px/1.3 Archivo,sans-serif;color:rgba(245,243,238,.9)}
+.joinnote span{font:400 13.5px/1.4 Archivo,sans-serif;color:var(--paper-62)}
+
+/* phone mock */
+.shot{position:relative;display:flex;justify-content:center}
+.halo{position:absolute;width:min(420px,100%);aspect-ratio:1;border-radius:50%;
+  border:44px solid rgba(46,158,104,.11);top:16px;pointer-events:none}
+.phone{position:relative;width:300px;max-width:100%;background:var(--chalk);border-radius:38px;
+  border:8px solid #000;box-shadow:0 24px 60px rgba(0,0,0,.5);overflow:hidden;padding-bottom:14px;
+  color:var(--board)}
+.phead{background:var(--board);padding:14px 18px}
+.prow{display:flex;align-items:center;justify-content:space-between}
+.plabel{font:500 9.5px/1 "IBM Plex Mono",monospace;letter-spacing:.14em;color:var(--paper-62)}
+.live{display:flex;align-items:center;gap:5px;font:500 9px/1 "IBM Plex Mono",monospace;
+  letter-spacing:.1em;color:var(--paper-72)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--grass-lt)}
+.holeno{display:flex;align-items:flex-end;justify-content:space-between;margin-top:9px}
+.holeno .n{font-size:50px;font-weight:800;font-stretch:118%;letter-spacing:-.05em;color:var(--chalk);line-height:.85}
+.holeno .k{font-size:12px;font-weight:600;color:var(--paper-62)}
+.chip{background:rgba(245,243,238,.1);border-radius:7px;padding:6px 10px;text-align:center}
+.chip i{display:block;font:500 8px/1 "IBM Plex Mono",monospace;letter-spacing:.12em;color:var(--paper-62);font-style:normal}
+.chip b{display:block;font:700 16px/1 Archivo,sans-serif;color:var(--chalk);margin-top:3px}
+.pbody{padding:12px;display:flex;flex-direction:column;gap:9px}
+.pcard{background:#fff;border-radius:11px;border:1px solid rgba(14,21,18,.07);padding:10px 11px}
+.pcard>b{display:block;font:700 13.5px/1 Archivo,sans-serif;margin-bottom:8px}
+.strip{display:flex;gap:5px}
+.strip span{flex:1;height:40px;border-radius:9px;background:rgba(14,21,18,.06);
+  display:flex;align-items:center;justify-content:center;
+  font:600 16px/1 "IBM Plex Mono",monospace}
+.strip span.on{background:var(--fairway);color:#fff}
+
+/* ---- steps ---- */
+section{padding-top:84px}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:34px}
+.step{border-top:2px solid var(--board);padding-top:18px}
+.step .eyebrow{color:var(--fairway);display:block;margin-bottom:14px}
+.step h3{font-size:26px;font-stretch:112%;letter-spacing:-.028em;line-height:1.12;margin-bottom:9px}
+.step p{font:400 15px/1.6 Archivo,sans-serif;color:var(--ink-62)}
+.step code{font-family:"IBM Plex Mono",monospace;font-size:13.5px;color:var(--board)}
+
+/* ---- money ---- */
+.money{background:var(--board);border-radius:22px;padding:56px;display:grid;
+  grid-template-columns:1fr 1fr;gap:52px;align-items:center}
+.money .eyebrow{color:var(--pin);display:block;margin-bottom:20px}
+.money h2{font-size:clamp(30px,3.6vw,42px);color:var(--chalk);line-height:1.05}
+.money .lede{font:400 17px/1.6 Archivo,sans-serif;color:var(--paper-72);margin-top:18px;max-width:420px}
+.money .fine{font:400 14px/1.5 Archivo,sans-serif;color:var(--paper-62);max-width:400px;
+  margin-top:26px;padding-top:20px;border-top:1px solid rgba(245,243,238,.14)}
+.board{background:var(--chalk);border-radius:14px;overflow:hidden}
+.board .bh{background:rgba(14,21,18,.06);padding:12px 18px;display:flex;justify-content:space-between;gap:10px}
+.board .bh span{font:500 10px/1 "IBM Plex Mono",monospace;letter-spacing:.14em;color:var(--ink-62)}
+.board .br{padding:14px 18px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(14,21,18,.08)}
+.board .br:last-of-type{border-bottom:0}
+.board .br b{flex:1;font:700 17px/1 Archivo,sans-serif}
+.board .br i{font:400 12.5px/1 Archivo,sans-serif;color:var(--ink-62);font-style:normal}
+.board .br em{font:600 17px/1 "IBM Plex Mono",monospace;min-width:70px;text-align:right;font-style:normal}
+.pos{color:var(--up)}.neg{color:var(--down)}
+.why{background:rgba(14,21,18,.04);padding:14px 18px;display:flex;flex-direction:column;gap:6px}
+.why p{font:400 13px/1.45 Archivo,sans-serif;color:var(--ink-62)}
+
+/* ---- games ---- */
+.games h2{font-size:clamp(30px,4vw,38px);margin-bottom:8px}
+.games .lede{font:400 16px/1.6 Archivo,sans-serif;color:var(--ink-62);max-width:520px;margin-bottom:34px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.game{background:#fff;border:1px solid rgba(14,21,18,.09);border-radius:14px;padding:22px}
+.game .gh{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:7px}
+.game h3{font-size:21px;font-stretch:112%;letter-spacing:-.02em;line-height:1}
+.game .cnt{font:500 10.5px/1 "IBM Plex Mono",monospace;letter-spacing:.1em;color:var(--fairway);white-space:nowrap}
+.game p{font:400 14.5px/1.55 Archivo,sans-serif;color:var(--ink-62)}
+.game.dark{background:var(--board);border-color:var(--board)}
+.game.dark h3{color:var(--chalk)}
+.game.dark .cnt{color:var(--pin)}
+.game.dark p{color:var(--paper-72)}
+
+/* ---- close ---- */
+.close{border-top:2px solid var(--board);padding-top:40px;display:flex;align-items:flex-end;
+  justify-content:space-between;gap:40px;flex-wrap:wrap}
+.close h2{font-size:clamp(30px,4.4vw,44px);letter-spacing:-.038em;max-width:560px}
+.close p{font:400 16px/1.6 Archivo,sans-serif;color:var(--ink-62);margin-top:14px;max-width:440px}
+.appstore.dark{background:var(--board);color:var(--chalk);height:56px;padding:0 24px}
+.appstore.dark:hover{background:#000;color:var(--chalk)}
+.appstore.dark .sm{color:var(--paper-72)}
+.appstore.dark .lg{font-size:19px}
+
+/* ---- footer ---- */
+footer{margin-top:64px;padding-bottom:34px}
+.foot{border-top:1px solid rgba(14,21,18,.12);padding-top:24px;display:flex;align-items:center;
+  justify-content:space-between;flex-wrap:wrap;gap:16px}
+.foot .brand span{color:var(--board);font-size:16px}
+.foot nav{display:flex;gap:26px;flex-wrap:wrap}
+.foot nav a{font:400 13.5px/1 Archivo,sans-serif;color:var(--ink-62)}
+.foot nav a:hover{color:var(--board)}
+.foot .url{font:400 12px/1 "IBM Plex Mono",monospace;color:var(--ink-45)}
+
+/* ---- interior pages (privacy, terms, support) ---- */
+.pagehead{padding:40px 0 52px}
+.pagehead .eyebrow{color:var(--pin);display:block;margin-bottom:18px}
+.pagehead h1{font-size:clamp(34px,5vw,56px);letter-spacing:-.04em;color:var(--chalk);max-width:760px}
+.pagehead .lede{font:400 18px/1.55 Archivo,sans-serif;color:var(--paper-72);max-width:620px;margin-top:20px}
+.pagehead .stamp{font:500 11px/1 "IBM Plex Mono",monospace;letter-spacing:.14em;
+  color:var(--paper-62);margin-top:26px}
+
+.prose{max-width:720px;padding-top:56px}
+.prose h2{font-size:26px;font-stretch:112%;letter-spacing:-.028em;line-height:1.15;
+  margin:44px 0 12px;padding-top:22px;border-top:2px solid var(--board)}
+.prose h2:first-of-type{margin-top:0}
+.prose h3{font-size:18px;font-stretch:106%;letter-spacing:-.018em;margin:26px 0 8px}
+.prose p{font:400 16px/1.65 Archivo,sans-serif;color:var(--ink-72);margin-bottom:14px}
+.prose ul{margin:0 0 16px;padding-left:20px}
+.prose li{font:400 16px/1.65 Archivo,sans-serif;color:var(--ink-72);margin-bottom:8px}
+.prose li::marker{color:var(--fairway)}
+.prose strong{font-weight:700;color:var(--board)}
+.prose a{text-decoration:underline;text-underline-offset:2px}
+.prose code{font-family:"IBM Plex Mono",monospace;font-size:14.5px;
+  background:rgba(14,21,18,.06);padding:2px 6px;border-radius:5px}
+
+/* A claim worth pulling out of the paragraph flow. */
+.callout{background:var(--board);color:var(--chalk);border-radius:16px;padding:26px 28px;margin:26px 0}
+.callout b{display:block;font:700 17px/1.3 Archivo,sans-serif;margin-bottom:8px}
+.callout p{font:400 15px/1.6 Archivo,sans-serif;color:var(--paper-72);margin:0}
+
+/* Support: the contact card and the FAQ list. */
+.contact{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin:0 0 8px}
+.card{background:#fff;border:1px solid rgba(14,21,18,.09);border-radius:14px;padding:24px}
+.card .eyebrow{color:var(--fairway);display:block;margin-bottom:12px}
+.card h3{font-size:20px;font-stretch:112%;letter-spacing:-.02em;margin-bottom:8px}
+.card p{font:400 14.5px/1.55 Archivo,sans-serif;color:var(--ink-62);margin-bottom:14px}
+.card a.mailto{font:600 16px/1.3 Archivo,sans-serif;word-break:break-word}
+.card .meta{font:400 13px/1.5 Archivo,sans-serif;color:var(--ink-62);margin:0}
+
+.faq{border-top:2px solid var(--board);margin-top:8px}
+.faq details{border-bottom:1px solid rgba(14,21,18,.12)}
+.faq summary{cursor:pointer;list-style:none;padding:18px 0;
+  font:700 17px/1.35 Archivo,sans-serif;font-stretch:106%;letter-spacing:-.015em;
+  display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";font:400 22px/1 "IBM Plex Mono",monospace;color:var(--fairway);flex:none}
+.faq details[open] summary::after{content:"−"}
+.faq summary:hover{color:var(--fairway)}
+.faq .ans{padding:0 0 20px;max-width:640px}
+.faq .ans p{font:400 15.5px/1.65 Archivo,sans-serif;color:var(--ink-72);margin-bottom:12px}
+.faq .ans p:last-child{margin-bottom:0}
+
+/* A definition-style table for the data disclosure. */
+.datatable{width:100%;border-collapse:collapse;margin:8px 0 18px}
+.datatable th,.datatable td{text-align:left;padding:12px 14px;border-bottom:1px solid rgba(14,21,18,.12);
+  font:400 15px/1.5 Archivo,sans-serif;color:var(--ink-72);vertical-align:top}
+.datatable th{font:500 10px/1 "IBM Plex Mono",monospace;letter-spacing:.14em;color:var(--ink-62);
+  border-bottom-width:2px;border-bottom-color:var(--board);white-space:nowrap}
+.datatable td:first-child{font-weight:600;color:var(--board);white-space:nowrap}
+
+@media (max-width:900px){
+  :root{--pad:24px}
+  .hero{grid-template-columns:1fr;gap:44px;padding:36px 0 52px}
+  .hero .lede{max-width:none}
+  .steps{grid-template-columns:1fr;gap:28px}
+  .money{grid-template-columns:1fr;gap:34px;padding:34px 26px;border-radius:18px}
+  .grid{grid-template-columns:1fr 1fr}
+  section{padding-top:60px}
+  .contact{grid-template-columns:1fr}
+  .prose{padding-top:40px}
+}
+@media (max-width:620px){
+  /* The section links used to be hidden outright below this width, which left Games, How it
+     works and Money unreachable on a phone with no menu to replace them. They wrap instead. */
+  .nav{gap:14px}
+  .navlinks{gap:18px;flex-wrap:wrap;row-gap:12px}
+  .navlinks a{font-size:14px}
+  .grid{grid-template-columns:1fr}
+  .close{align-items:flex-start}
+  .datatable,.datatable tbody,.datatable tr,.datatable td{display:block;width:100%}
+  .datatable thead{display:none}
+  .datatable tr{padding:12px 0;border-bottom:1px solid rgba(14,21,18,.12)}
+  .datatable td{border:0;padding:2px 0}
+  .datatable td:first-child{font-size:13px}
+}

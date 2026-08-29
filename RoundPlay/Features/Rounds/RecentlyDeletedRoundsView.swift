@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import RoundPlayEngine
+import RoundPlayData
 
 /// Deleted rounds aren't actually gone — "Delete Round" just moves them here, where they can be
 /// brought back or purged for good. Nothing outside this screen calls the real, permanent delete.
@@ -55,13 +56,15 @@ struct RecentlyDeletedRoundsView: View {
                 Button("Done") { dismiss() }
             }
         }
-        .confirmationDialog(
+        // An alert rather than an action sheet: this is the one irreversible action in the app, and
+        // it deserves the modal treatment that lands in the centre of the screen instead of sliding
+        // up under the finger that just tapped Delete.
+        .alert(
             "Delete this round forever?",
             isPresented: Binding(
                 get: { pendingPermanentDelete != nil },
                 set: { if !$0 { pendingPermanentDelete = nil } }
-            ),
-            titleVisibility: .visible
+            )
         ) {
             Button("Delete Forever", role: .destructive) {
                 if let round = pendingPermanentDelete {
@@ -72,7 +75,7 @@ struct RecentlyDeletedRoundsView: View {
             }
             Button("Cancel", role: .cancel) { pendingPermanentDelete = nil }
         } message: {
-            Text("This can't be undone — the round and all its scores are gone for good.")
+            Text("This can't be undone. The round and all its scores are gone for good.")
         }
     }
 

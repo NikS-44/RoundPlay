@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import RoundPlayEngine
+import RoundPlayData
 
 /// Course info and every player's name/handicap, all editable from one place — reached from the
 /// Scorecard toolbar, not buried in Standings where nobody looks for "edit."

@@ -1,5 +1,6 @@
 import SwiftUI
 import RoundPlayEngine
+import RoundPlayData
 
 /// The minimum-cash-flow breakdown of who pays who — a themed bottom sheet, not another trip
 /// through the native share sheet, since this is something the group looks at together.
@@ -33,7 +34,7 @@ struct SettleUpSheet: View {
                             .font(RoundPlayFont.archivo(17, .bold))
                             .foregroundStyle(RoundPlayColors.accent)
                     } footer: {
-                        RoundPlayTypography.caption("The fewest payments that settle every game — RoundPlay never holds or moves money.")
+                        RoundPlayTypography.caption("The fewest payments that settle every game. RoundPlay never holds or moves money.")
                             .foregroundStyle(.secondary)
                     }
                 }

@@ -14,3 +14,6 @@ fastlane/screenshots/**/*.png
 fastlane/test_output
 *.ipa
 *.dSYM.zip
+
+# wrangler local cache (contains account id and email)
+.wrangler/

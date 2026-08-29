@@ -1,7 +1,7 @@
 {
   "name": "RoundPlay",
   "short_name": "RoundPlay",
-  "description": "Golf betting games, scored on the course.",
+  "description": "One scorecard for your whole group, handicaps and all.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0E1512",

@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import RoundPlayEngine
+import RoundPlayData
 
 /// Live standings and money for every game in the round.
 ///
@@ -80,7 +81,7 @@ struct RoundDashboardView: View {
                 } header: {
                     RoundPlaySectionHeader("Scoring")
                 } footer: {
-                    RoundPlayTypography.caption("No games running — plain stroke play, net score vs. par.")
+                    RoundPlayTypography.caption("No games running. Plain stroke play, net score vs. par.")
                         .foregroundStyle(.secondary)
                 }
             }

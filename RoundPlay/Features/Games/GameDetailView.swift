@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import RoundPlayEngine
+import RoundPlayData
 
 /// Full rules for one game, with a direct path into starting a round playing it.
 struct GameDetailView: View {
@@ -41,14 +42,17 @@ struct GameDetailView: View {
                     }
                 }
 
+                // Sized to its label, matching the Rounds empty state. A full-width bar at the foot
+                // of a page of rules read as "submit this form" rather than "go play this game".
                 Button {
                     isStartingRound = true
                 } label: {
                     Text("Start a Round")
-                        .font(RoundPlayFont.archivo(17, .semiBold))
-                        .frame(maxWidth: .infinity, minHeight: 50)
+                        .font(RoundPlayFont.archivo(16, .semiBold))
+                        .padding(.horizontal, 10)
                 }
                 .roundPlayPrimaryButtonStyle()
+                .controlSize(.large)
                 .tint(RoundPlayColors.accent)
                 .padding(.top, 8)
             }

@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import RoundPlayData
 
 /// One-time course setup: 18 pars and 18 stroke indexes, copied off the scorecard.
 struct CourseEntryView: View {

@@ -1,18 +1,27 @@
 import SwiftUI
 import SwiftData
+import RoundPlayData
 
 @main
 struct RoundPlayApp: App {
     @UIApplicationDelegateAdaptor(RoundPlayAppDelegate.self) var appDelegate
+    @Environment(\.scenePhase) private var scenePhase
 
     var sharedModelContainer: ModelContainer = RoundPlaySchema.appContainer
 
     var body: some Scene {
         WindowGroup {
-            // Applied at the root so the fireworks cover the whole window rather than being
-            // clipped to whatever sheet or tab happened to trigger them.
             ContentView()
                 .celebrationOverlay()
+                .environment(RoundSyncSession.shared)
+                .onAppear {
+                    RoundSyncSession.shared.activate(context: sharedModelContainer.mainContext)
+                }
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .active {
+                        RoundSyncSession.shared.pushAll()
+                    }
+                }
         }
         .modelContainer(sharedModelContainer)
     }
