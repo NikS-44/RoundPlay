@@ -170,8 +170,10 @@ struct HoleScreenView: View {
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack {
                                     RoundPlayTypography.headline(seat.name)
-                                    if let team = round.bestBallTeamLabel(for: seat) {
-                                        BestBallTeamBadge(team: team)
+                                    // Best Ball's team is fixed for the round; Sixes' partner
+                                    // changes every six holes, so it's looked up per hole instead.
+                                    if let team = round.bestBallTeamLabel(for: seat) ?? round.sixesTeamLabel(for: seat, atHole: hole) {
+                                        TeamBadge(team: team)
                                     }
                                     if state.strokesReceived(hole: hole, player: seat.playerID) > 0 {
                                         RoundPlayTypography.eyebrow("+1 stroke")
@@ -486,7 +488,11 @@ struct HoleScreenView: View {
     }
 }
 
-/// Hole number, par, and stroke index — the three facts a golfer checks on the tee.
+/// Hole number, par, and handicap — the three facts a golfer checks on the tee. Par gets the
+/// big, easy-to-read treatment on the left since it's the number a player is actually judging
+/// their score against hole after hole; the current hole number is secondary context, so it
+/// moves to the small trailing stack — still tappable to jump to another hole, just no longer
+/// shouting the loudest on the tee.
 private struct HoleHeader: View {
     let hole: Int
     let par: Int
@@ -498,30 +504,22 @@ private struct HoleHeader: View {
 
     var body: some View {
         HStack(alignment: .top) {
-            Button(action: onTapHole) {
-                VStack(spacing: 2) {
-                    HStack(spacing: 4) {
-                        RoundPlayTypography.eyebrow("Hole")
-                            .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.6))
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.6))
-                    }
-                    Text("\(hole)")
-                        .font(RoundPlayFont.archivo(44, .black))
-                        .tracking(-2.2)
-                        .foregroundStyle(RoundPlayColors.paperOnBoard)
-                        .contentTransition(.numericText())
-                }
-                .frame(minWidth: 96)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 6)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(RoundPlayColors.paperOnBoard.opacity(0.35), lineWidth: 1.5)
-                )
+            VStack(spacing: 2) {
+                RoundPlayTypography.eyebrow("Par")
+                    .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.6))
+                Text("\(par)")
+                    .font(RoundPlayFont.archivo(44, .black))
+                    .tracking(-2.2)
+                    .foregroundStyle(RoundPlayColors.paperOnBoard)
+                    .contentTransition(.numericText())
             }
-            .buttonStyle(.plain)
+            .frame(minWidth: 96)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(RoundPlayColors.paperOnBoard.opacity(0.35), lineWidth: 1.5)
+            )
 
             Spacer()
 
@@ -552,14 +550,23 @@ private struct HoleHeader: View {
             }
 
             VStack(alignment: .trailing, spacing: 6) {
-                VStack(alignment: .trailing, spacing: 2) {
-                    RoundPlayTypography.eyebrow("Par")
-                        .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.5))
-                    RoundPlayTypography.numeral("\(par)", size: 21)
-                        .foregroundStyle(RoundPlayColors.paperOnBoard)
+                Button(action: onTapHole) {
+                    VStack(alignment: .trailing, spacing: 2) {
+                        HStack(spacing: 3) {
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.5))
+                            RoundPlayTypography.eyebrow("Hole")
+                                .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.5))
+                        }
+                        RoundPlayTypography.numeral("\(hole)", size: 21)
+                            .foregroundStyle(RoundPlayColors.paperOnBoard)
+                            .contentTransition(.numericText())
+                    }
                 }
+                .buttonStyle(.plain)
                 VStack(alignment: .trailing, spacing: 2) {
-                    RoundPlayTypography.eyebrow("SI")
+                    RoundPlayTypography.eyebrow("Handicap")
                         .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.5))
                     RoundPlayTypography.numeral("\(strokeIndex)", size: 21)
                         .foregroundStyle(RoundPlayColors.paperOnBoard)

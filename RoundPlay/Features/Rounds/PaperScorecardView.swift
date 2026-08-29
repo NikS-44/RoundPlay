@@ -208,7 +208,7 @@ struct FullScreenScorecardView: View {
     }
 }
 
-/// The grid itself: one sticky label column (Hole/Par/S.I., then each player) beside a single
+/// The grid itself: one sticky label column (Hole/Par/Handicap, then each player) beside a single
 /// horizontally-scrolling region holding every row — header and scores move together because
 /// they're the same `ScrollView`, not two independently-scrolling ones.
 private struct ScorecardGrid: View {
@@ -264,7 +264,7 @@ private struct ScorecardGrid: View {
             rowDivider
             rowLabelCell("Par")
             rowDivider
-            rowLabelCell("S.I.")
+            rowLabelCell("Handicap")
             rowDivider
             ForEach(Array(round.orderedSeats.enumerated()), id: \.element.id) { index, seat in
                 rowLabelCell(
@@ -413,17 +413,38 @@ private struct ScorecardGrid: View {
         return "\(values.reduce(0, +))"
     }
 
-    /// The number shown is always gross — that's what a paper scorecard shows — but the color is
-    /// judged against net (gross minus any handicap stroke on this hole), so a player getting a
-    /// stroke here sees the same green/red a scratch player would for the equivalent net result.
+    /// The number shown is always gross — that's what a paper scorecard shows — but the color, the
+    /// circle/square mark, and the strokes-received dots are all judged against net (gross minus
+    /// any handicap stroke on this hole), so a player getting a stroke here reads the same as a
+    /// scratch player would for the equivalent net result. The Sixes tag, when this round is
+    /// playing Sixes, names this seat's partner-pairing for *this* hole rather than the round —
+    /// the pairing itself rotates every six holes.
     private func scoreCell(hole: Int, seat: SeatRecord) -> some View {
         let gross = state.gross(hole: hole, player: seat.playerID)
         let net = state.net(hole: hole, player: seat.playerID)
         let relative = net.map { $0 - par(hole) }
-        return Text(gross.map { "\($0)" } ?? "–")
-            .font(RoundPlayFont.plexMono(19, .semiBold))
-            .foregroundStyle(color(for: relative))
-            .frame(width: cellWidth, height: rowHeight)
+        let strokesReceived = state.strokesReceived(hole: hole, player: seat.playerID)
+        let sixesTeam = round.sixesTeamLabel(for: seat, atHole: hole)
+        return ZStack {
+            scoreMark(for: relative)
+            Text(gross.map { "\($0)" } ?? "–")
+                .font(RoundPlayFont.plexMono(19, .semiBold))
+                .foregroundStyle(color(for: relative))
+            if strokesReceived > 0 {
+                strokeDots(count: strokesReceived)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                    .padding(3)
+            }
+            if let sixesTeam {
+                Text(sixesTeam)
+                    .font(RoundPlayFont.archivo(8, .bold))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                    .padding(.leading, 3)
+                    .padding(.bottom, 2)
+            }
+        }
+        .frame(width: cellWidth, height: rowHeight)
     }
 
     private func color(for relativeToPar: Int?) -> Color {
@@ -431,6 +452,47 @@ private struct ScorecardGrid: View {
         if relativeToPar < 0 { return RoundPlayColors.scoreUnderPar }
         if relativeToPar > 0 { return RoundPlayColors.scoreOverPar }
         return RoundPlayColors.scoreAtPar
+    }
+
+    /// The circle/square a scorekeeper draws by hand: birdie circles the number once, eagle-or-
+    /// better circles it twice; bogey squares it once, double-bogey-or-worse squares it twice. Par
+    /// (and a hole with no score yet) carries no mark — the absence is itself the "nothing
+    /// happened" signal, same as on paper.
+    private func scoreMark(for relativeToPar: Int?) -> some View {
+        let ring: (outer: CGFloat, inner: CGFloat?)? = {
+            guard let relativeToPar, relativeToPar != 0 else { return nil }
+            return abs(relativeToPar) >= 2 ? (30, 24) : (26, nil)
+        }()
+        let tint = color(for: relativeToPar)
+        let isUnderPar = (relativeToPar ?? 0) < 0
+        return ZStack {
+            if let ring {
+                markShape(isUnderPar: isUnderPar, tint: tint, size: ring.outer)
+                if let inner = ring.inner {
+                    markShape(isUnderPar: isUnderPar, tint: tint, size: inner)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func markShape(isUnderPar: Bool, tint: Color, size: CGFloat) -> some View {
+        if isUnderPar {
+            Circle().strokeBorder(tint, lineWidth: 1.25).frame(width: size, height: size)
+        } else {
+            Rectangle().strokeBorder(tint, lineWidth: 1.25).frame(width: size, height: size)
+        }
+    }
+
+    /// One dot per handicap stroke this seat receives on this hole, tucked in the cell's corner —
+    /// answers "who's getting a shot here" at a glance instead of cross-referencing the Handicap
+    /// row for every score.
+    private func strokeDots(count: Int) -> some View {
+        HStack(spacing: 2) {
+            ForEach(0..<count, id: \.self) { _ in
+                Circle().fill(RoundPlayColors.accent).frame(width: 4, height: 4)
+            }
+        }
     }
 
     // MARK: - Cells
@@ -455,7 +517,7 @@ private struct ScorecardGrid: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                 if let team {
-                    BestBallTeamBadge(team: team)
+                    TeamBadge(team: team)
                 }
             }
             if let subtitle {
