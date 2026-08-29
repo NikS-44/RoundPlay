@@ -488,11 +488,11 @@ struct HoleScreenView: View {
     }
 }
 
-/// Hole number, par, and handicap — the three facts a golfer checks on the tee. Par gets the
-/// big, easy-to-read treatment on the left since it's the number a player is actually judging
-/// their score against hole after hole; the current hole number is secondary context, so it
-/// moves to the small trailing stack — still tappable to jump to another hole, just no longer
-/// shouting the loudest on the tee.
+/// Hole number, par, and handicap — the three facts a golfer checks on the tee. "Hole X" is the
+/// title and the tap target for jumping to another hole, so it gets a real button treatment
+/// (border + chevron) up top where a title belongs. Par sits underneath on the left with no
+/// border — it's not tappable, and the border was confusing people into thinking it was. Handicap
+/// stays a small, quiet fact in the top right.
 private struct HoleHeader: View {
     let hole: Int
     let par: Int
@@ -503,68 +503,64 @@ private struct HoleHeader: View {
     let onTapWolf: () -> Void
 
     var body: some View {
-        HStack(alignment: .top) {
-            VStack(spacing: 2) {
-                RoundPlayTypography.eyebrow("Par")
-                    .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.6))
-                Text("\(par)")
-                    .font(RoundPlayFont.archivo(44, .black))
-                    .tracking(-2.2)
-                    .foregroundStyle(RoundPlayColors.paperOnBoard)
-                    .contentTransition(.numericText())
-            }
-            .frame(minWidth: 96)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 6)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .strokeBorder(RoundPlayColors.paperOnBoard.opacity(0.35), lineWidth: 1.5)
-            )
-
-            Spacer()
-
-            if let wolfLine {
-                Button(action: onTapWolf) {
-                    HStack(spacing: 4) {
-                        Text(wolfLine)
-                            .font(RoundPlayFont.archivo(15, .semiBold))
-                            .multilineTextAlignment(.center)
-                        Image(systemName: "pencil")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.6))
-                    }
-                    .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.85))
-                    .frame(maxWidth: 130)
-                    .padding(.top, 8)
+        VStack(spacing: 10) {
+            Button(action: onTapHole) {
+                HStack(spacing: 5) {
+                    Text("Hole \(hole)")
+                        .font(RoundPlayFont.archivo(17, .bold))
+                        .contentTransition(.numericText())
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 11, weight: .bold))
                 }
-                .buttonStyle(.plain)
-                Spacer()
-            } else if let leaderLine {
-                Text(leaderLine)
-                    .font(RoundPlayFont.archivo(15, .semiBold))
-                    .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.85))
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 120)
-                    .padding(.top, 8)
-                Spacer()
+                .foregroundStyle(RoundPlayColors.paperOnBoard)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule()
+                        .strokeBorder(RoundPlayColors.paperOnBoard.opacity(0.35), lineWidth: 1.5)
+                )
             }
+            .buttonStyle(.plain)
 
-            VStack(alignment: .trailing, spacing: 6) {
-                Button(action: onTapHole) {
-                    VStack(alignment: .trailing, spacing: 2) {
-                        HStack(spacing: 3) {
-                            Image(systemName: "chevron.up.chevron.down")
-                                .font(.system(size: 8, weight: .bold))
-                                .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.5))
-                            RoundPlayTypography.eyebrow("Hole")
-                                .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.5))
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    RoundPlayTypography.eyebrow("Par")
+                        .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.6))
+                    Text("\(par)")
+                        .font(RoundPlayFont.archivo(44, .black))
+                        .tracking(-2.2)
+                        .foregroundStyle(RoundPlayColors.paperOnBoard)
+                        .contentTransition(.numericText())
+                }
+
+                Spacer()
+
+                if let wolfLine {
+                    Button(action: onTapWolf) {
+                        HStack(spacing: 4) {
+                            Text(wolfLine)
+                                .font(RoundPlayFont.archivo(15, .semiBold))
+                                .multilineTextAlignment(.center)
+                            Image(systemName: "pencil")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.6))
                         }
-                        RoundPlayTypography.numeral("\(hole)", size: 21)
-                            .foregroundStyle(RoundPlayColors.paperOnBoard)
-                            .contentTransition(.numericText())
+                        .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.85))
+                        .frame(maxWidth: 130)
+                        .padding(.top, 8)
                     }
+                    .buttonStyle(.plain)
+                    Spacer()
+                } else if let leaderLine {
+                    Text(leaderLine)
+                        .font(RoundPlayFont.archivo(15, .semiBold))
+                        .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.85))
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 120)
+                        .padding(.top, 8)
+                    Spacer()
                 }
-                .buttonStyle(.plain)
+
                 VStack(alignment: .trailing, spacing: 2) {
                     RoundPlayTypography.eyebrow("Handicap")
                         .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.5))
