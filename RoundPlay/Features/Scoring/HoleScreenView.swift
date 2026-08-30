@@ -9,6 +9,16 @@ import RoundPlayData
 /// Prompts are driven entirely by the union of `requiredInputs` across the round's active games.
 /// This view has no idea what Wolf or Bingo Bango Bongo *are*; it knows that some game needs a
 /// partner choice, or three hole events, and renders accordingly.
+
+/// Lets `HoleScreenView` report the hole it's currently showing up to `RoundTabsView`, which
+/// draws the nav-bar title for the live round.
+struct CurrentHolePreferenceKey: PreferenceKey {
+    static let defaultValue: Int? = nil
+    static func reduce(value: inout Int?, nextValue: () -> Int?) {
+        if let next = nextValue() { value = next }
+    }
+}
+
 struct HoleScreenView: View {
     @Environment(\.modelContext) private var modelContext
 
@@ -21,7 +31,10 @@ struct HoleScreenView: View {
     @State private var hole: Int
     @State private var showsIncompleteWarning = false
     @State private var isFixingIncompleteHoles = false
-    @State private var isJumpingToHole = false
+    /// Owned by the enclosing `RoundTabsView` so the nav-bar title (which that view draws, not
+    /// this one) can be the tap target that opens the jump sheet. Defaults to an inert binding
+    /// for previews and any standalone use.
+    @Binding private var isJumpingToHole: Bool
     @State private var isEditingWolf = false
     @State private var lastScore: (hole: Int, playerID: UUID)?
     /// Bumped every time Finish Round is refused for missing scores. Only exists so the warning
@@ -33,11 +46,13 @@ struct HoleScreenView: View {
         round: RoundRecord,
         course: Course,
         isPostCompletionEdit: Bool = false,
+        isJumpingToHole: Binding<Bool> = .constant(false),
         onFinished: @escaping () -> Void = {}
     ) {
         self.round = round
         self.course = course
         self.isPostCompletionEdit = isPostCompletionEdit
+        self._isJumpingToHole = isJumpingToHole
         self.onFinished = onFinished
         // Opening a round already in progress should land on the first hole still missing a
         // score (or a required hole-event tally), not hole 1 every time — otherwise resuming a
@@ -136,12 +151,10 @@ struct HoleScreenView: View {
     var body: some View {
         VStack(spacing: 0) {
             HoleHeader(
-                hole: hole,
                 par: course.hole(hole)?.par ?? 4,
                 strokeIndex: course.hole(hole)?.strokeIndex ?? 1,
                 leaderLine: leaderLine,
                 wolfLine: wolfLine,
-                onTapHole: { isJumpingToHole = true },
                 onTapWolf: { isEditingWolf = true }
             )
 
@@ -234,8 +247,31 @@ struct HoleScreenView: View {
         }
         .navigationTitle(isPostCompletionEdit ? "Correct Scores" : round.courseName)
         .navigationBarTitleDisplayMode(.inline)
+        // `RoundTabsView` owns the visible nav bar for the live round and draws "Hole X" as its
+        // title; this hands that view the current hole so the title can track paging.
+        .preference(key: CurrentHolePreferenceKey.self, value: hole)
         .toolbar {
+            // The live round's nav bar is drawn by `RoundTabsView`; here (the "Correct Scores"
+            // sheet, its own NavigationStack) this view still owns the bar, so it draws the same
+            // tappable "Hole X" title for jumping between holes to fix scores.
             if isPostCompletionEdit {
+                ToolbarItem(placement: .principal) {
+                    Button {
+                        isJumpingToHole = true
+                    } label: {
+                        // Only the text takes part in layout so the principal item centres on
+                        // "Hole X"; the chevron is an overlay just off the trailing edge.
+                        Text("Hole \(hole)")
+                            .font(RoundPlayFont.archivo(22, .bold))
+                            .contentTransition(.numericText())
+                            .overlay(alignment: .trailing) {
+                                Image(systemName: "chevron.up.chevron.down")
+                                    .font(.system(size: 13, weight: .bold))
+                                    .offset(x: 22)
+                            }
+                    }
+                    .tint(.primary)
+                }
                 ToolbarItem(placement: .topBarLeading) {
                     NavigationLink("History") { AuditLogView(round: round) }
                 }
@@ -488,47 +524,26 @@ struct HoleScreenView: View {
     }
 }
 
-/// Hole number, par, and handicap — the three facts a golfer checks on the tee. "Hole X" is the
-/// title and the tap target for jumping to another hole, so it gets a real button treatment
-/// (border + chevron) up top where a title belongs. Par sits underneath on the left with no
-/// border — it's not tappable, and the border was confusing people into thinking it was. Handicap
-/// stays a small, quiet fact in the top right.
+/// Par and handicap — two of the three facts a golfer checks on the tee. The hole number itself
+/// is the nav-bar title now (tappable, to jump to another hole), so it no longer appears here.
+/// Par sits on the left with no border — it's not tappable, and the border was confusing people
+/// into thinking it was. Handicap mirrors it on the right at the same size.
 private struct HoleHeader: View {
-    let hole: Int
     let par: Int
     let strokeIndex: Int
     let leaderLine: String?
     let wolfLine: String?
-    let onTapHole: () -> Void
     let onTapWolf: () -> Void
 
     var body: some View {
         VStack(spacing: 10) {
-            Button(action: onTapHole) {
-                HStack(spacing: 5) {
-                    Text("Hole \(hole)")
-                        .font(RoundPlayFont.archivo(17, .bold))
-                        .contentTransition(.numericText())
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 11, weight: .bold))
-                }
-                .foregroundStyle(RoundPlayColors.paperOnBoard)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 6)
-                .background(
-                    Capsule()
-                        .strokeBorder(RoundPlayColors.paperOnBoard.opacity(0.35), lineWidth: 1.5)
-                )
-            }
-            .buttonStyle(.plain)
-
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
                     RoundPlayTypography.eyebrow("Par")
                         .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.6))
                     Text("\(par)")
-                        .font(RoundPlayFont.archivo(44, .black))
-                        .tracking(-2.2)
+                        .font(RoundPlayFont.archivo(36, .black))
+                        .tracking(-1.8)
                         .foregroundStyle(RoundPlayColors.paperOnBoard)
                         .contentTransition(.numericText())
                 }
@@ -564,8 +579,11 @@ private struct HoleHeader: View {
                 VStack(alignment: .trailing, spacing: 2) {
                     RoundPlayTypography.eyebrow("Handicap")
                         .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.5))
-                    RoundPlayTypography.numeral("\(strokeIndex)", size: 21)
+                    Text("\(strokeIndex)")
+                        .font(RoundPlayFont.archivo(36, .black))
+                        .tracking(-1.8)
                         .foregroundStyle(RoundPlayColors.paperOnBoard)
+                        .contentTransition(.numericText())
                 }
             }
         }

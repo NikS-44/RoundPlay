@@ -7,7 +7,6 @@ import RoundPlayData
 /// The Rounds tab: start a round, or resume one in progress.
 struct RoundsHomeView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(RoundSyncSession.self) private var sync
     @Query(sort: \RoundRecord.startedAt, order: .reverse) private var rounds: [RoundRecord]
     @Query private var courses: [CourseRecord]
 
@@ -245,9 +244,6 @@ struct RoundsHomeView: View {
         .listSectionSpacing(.compact)
         .navigationTitle("Rounds")
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                SyncStatusGlyph(state: sync.connectionState)
-            }
             ToolbarItem(placement: .primaryAction) {
                 Menu {
                     Button {
@@ -525,6 +521,11 @@ struct RoundTabsView: View {
 
     private enum RoundTab: Hashable { case summary, hole, scorecard, standings }
     @State private var selection: RoundTab
+    /// The hole `HoleScreenView` is showing, reported up via `CurrentHolePreferenceKey` so the
+    /// nav-bar title — which this view draws, not `HoleScreenView` — can read "Hole 7" and be the
+    /// tap target that opens the jump sheet.
+    @State private var currentHole = 1
+    @State private var isJumpingToHole = false
     @State private var isEditingRound = false
     @State private var isEditingScores = false
     @State private var isConfirmingDelete = false
@@ -601,7 +602,11 @@ struct RoundTabsView: View {
                 }
                 if !round.isComplete {
                     Tab("Hole", systemImage: "flag.fill", value: RoundTab.hole) {
-                        HoleScreenView(round: round, course: course) { selection = .summary }
+                        HoleScreenView(
+                            round: round,
+                            course: course,
+                            isJumpingToHole: $isJumpingToHole
+                        ) { selection = .summary }
                     }
                 }
                 Tab("Scorecard", systemImage: "square.grid.3x3", value: RoundTab.scorecard) {
@@ -617,6 +622,9 @@ struct RoundTabsView: View {
                 }
             }
             .toolbar(.hidden, for: .tabBar)
+            .onPreferenceChange(CurrentHolePreferenceKey.self) { hole in
+                if let hole { currentHole = hole }
+            }
             .navigationTitle(navigationTitleText)
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarBackButtonHidden(true)
@@ -638,6 +646,30 @@ struct RoundTabsView: View {
             // the tab already names the screen.
             .toolbar(selection == .scorecard ? .hidden : .visible, for: .navigationBar)
             .toolbar {
+                // "Hole X" is the nav-bar title on the live round, and tapping it is how you jump
+                // to another hole — the entry point a golfer reaches for first. The other tabs
+                // fall back to `navigationTitleText`.
+                if selection == .hole {
+                    ToolbarItem(placement: .principal) {
+                        Button {
+                            isJumpingToHole = true
+                        } label: {
+                            // Only the text takes part in layout, so the principal item is exactly
+                            // as wide as "Hole X" and lands on the true centre of the nav bar. The
+                            // chevron is an overlay pinned just off the trailing edge and adds no
+                            // width, so it can't push the text off-centre.
+                            Text("Hole \(currentHole)")
+                                .font(RoundPlayFont.archivo(22, .bold))
+                                .contentTransition(.numericText())
+                                .overlay(alignment: .trailing) {
+                                    Image(systemName: "chevron.up.chevron.down")
+                                        .font(.system(size: 13, weight: .bold))
+                                        .offset(x: 22)
+                                }
+                        }
+                        .tint(.primary)
+                    }
+                }
                 // A generic "<" back button reads like undo or "go to the previous step" — this
                 // isn't a step in a flow, it's leaving the round entirely, so it gets an explicit
                 // exit affordance instead.
@@ -674,7 +706,12 @@ struct RoundTabsView: View {
             }
             .sheet(isPresented: $isEditingScores) {
                 NavigationStack {
-                    HoleScreenView(round: round, course: course, isPostCompletionEdit: true) {
+                    HoleScreenView(
+                        round: round,
+                        course: course,
+                        isPostCompletionEdit: true,
+                        isJumpingToHole: $isJumpingToHole
+                    ) {
                         isEditingScores = false
                     }
                 }
