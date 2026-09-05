@@ -7,6 +7,10 @@ import SwiftUI
 struct HoleHeader: View {
     let par: Int
     let strokeIndex: Int
+    /// The solo round's running score — "+3 / THRU 6". Takes the middle of the board, where a
+    /// group round shows its leader or Wolf line; the two never coexist, because a solo round has
+    /// no leader to name and no Wolf to declare.
+    var centerLine: (value: String, caption: String)? = nil
     let leaderLine: String?
     let wolfLine: String?
     let onTapWolf: () -> Void
@@ -26,7 +30,18 @@ struct HoleHeader: View {
 
                 Spacer()
 
-                if let wolfLine {
+                if let centerLine {
+                    VStack(spacing: 2) {
+                        RoundPlayTypography.eyebrow(centerLine.caption)
+                            .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.55))
+                        Text(centerLine.value)
+                            .font(RoundPlayFont.archivo(31, .black))
+                            .tracking(-1.5)
+                            .foregroundStyle(RoundPlayColors.paperOnBoard)
+                            .contentTransition(.numericText())
+                    }
+                    Spacer()
+                } else if let wolfLine {
                     Button(action: onTapWolf) {
                         HStack(spacing: 4) {
                             Text(wolfLine)

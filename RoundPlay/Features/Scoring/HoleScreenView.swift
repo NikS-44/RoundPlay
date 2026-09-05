@@ -144,11 +144,24 @@ struct HoleScreenView: View {
     /// Phase 2 replaces it with the signed-in account.
     private var scorekeeper: SeatRecord? { round.orderedSeats.first }
 
+    /// The solo round's running score for the board's centre slot. Gross, not net: the number you
+    /// glance at while playing should be the number on the card.
+    private var runningScoreLine: (value: String, caption: String)? {
+        guard round.isSolo, let seat = round.orderedSeats.first else { return nil }
+        let played = RelativeToPar.holesPlayed(state: state, playerID: seat.playerID, holes: holeRange)
+        guard played > 0 else { return nil }
+        let versusPar = RelativeToPar.grossVersusPar(
+            state: state, course: course, playerID: seat.playerID, holes: holeRange
+        )
+        return (RelativeToPar.label(versusPar), "Thru \(played)")
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             HoleHeader(
                 par: course.hole(hole)?.par ?? 4,
                 strokeIndex: course.hole(hole)?.strokeIndex ?? 1,
+                centerLine: runningScoreLine,
                 leaderLine: leaderLine,
                 wolfLine: wolfLine,
                 onTapWolf: { isEditingWolf = true }
@@ -161,17 +174,29 @@ struct HoleScreenView: View {
 
             ScrollViewReader { scrollProxy in
             ScrollView {
-                GroupScoreEntry(
-                    round: round,
-                    course: course,
-                    hole: hole,
-                    state: state,
-                    requiredInputs: requiredInputs,
-                    isPostCompletionEdit: isPostCompletionEdit,
-                    groupCenterScore: groupExpectedScore,
-                    onRecord: { strokes, seat in record(strokes: strokes, for: seat) },
-                    onClear: { seat in clearScore(for: seat) }
-                )
+                Group {
+                    if round.isSolo, let seat = round.orderedSeats.first {
+                        SoloScoreEntry(
+                            seat: seat,
+                            course: course,
+                            hole: hole,
+                            state: state,
+                            onRecord: { record(strokes: $0, for: seat) }
+                        )
+                    } else {
+                        GroupScoreEntry(
+                            round: round,
+                            course: course,
+                            hole: hole,
+                            state: state,
+                            requiredInputs: requiredInputs,
+                            isPostCompletionEdit: isPostCompletionEdit,
+                            groupCenterScore: groupExpectedScore,
+                            onRecord: { strokes, seat in record(strokes: strokes, for: seat) },
+                            onClear: { seat in clearScore(for: seat) }
+                        )
+                    }
+                }
                 .padding()
                 .id("top")
             }
@@ -192,6 +217,7 @@ struct HoleScreenView: View {
                 isLastHole: isLastActionableHole,
                 isPostCompletionEdit: isPostCompletionEdit,
                 previousHoleIsIncomplete: previousNavigationHole.map { incompleteHoles.contains($0) } ?? false,
+                showsEnteredCount: !round.isSolo,
                 onPrevious: goToPreviousHole,
                 onNext: goToNextHole,
                 onFinish: finish

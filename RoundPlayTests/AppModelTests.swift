@@ -230,3 +230,33 @@ func guestNicknameAvoidance() {
         #expect(!used.contains(GuestNickname.random(avoiding: used)))
     }
 }
+
+@Test("Running score covers only holes actually played")
+func runningScoreIgnoresUnplayedHoles() throws {
+    let context = try inMemoryContext()
+    let course = validCourseRecord()
+    context.insert(course)
+    let engineCourse = try #require(course.engineCourse)
+
+    let round = RoundRecord(courseID: testCourseID, courseName: "Test Links")
+    let seat = SeatRecord(playerID: UUID(), name: "Me", courseHandicap: 0, position: 0)
+    round.seats = [seat]
+    context.insert(round)
+
+    // Four holes of a par-4 course: 5, 4, 4, 5 → +2, not +2 minus fourteen unplayed pars.
+    for (hole, strokes) in [(1, 5), (2, 4), (3, 4), (4, 5)] {
+        try EngineBridge.appendStrokes(
+            strokes, hole: hole, playerID: seat.playerID, to: round,
+            enteredBy: seat.playerID, enteredByName: seat.name, in: context
+        )
+    }
+
+    let state = EngineBridge.roundState(for: round, course: engineCourse)
+    #expect(RelativeToPar.grossVersusPar(state: state, course: engineCourse,
+                                         playerID: seat.playerID, holes: round.holeSegment.holeRange) == 2)
+    #expect(RelativeToPar.holesPlayed(state: state, playerID: seat.playerID,
+                                      holes: round.holeSegment.holeRange) == 4)
+    #expect(RelativeToPar.label(2) == "+2")
+    #expect(RelativeToPar.label(0) == "E")
+    #expect(RelativeToPar.label(-3) == "-3")
+}

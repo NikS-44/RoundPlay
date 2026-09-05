@@ -11,22 +11,26 @@ struct HoleNavigationBar: View {
     let isLastHole: Bool
     let isPostCompletionEdit: Bool
     let previousHoleIsIncomplete: Bool
+    /// "1 of 1 entered" says nothing a solo player doesn't already see on the grid.
+    var showsEnteredCount: Bool = true
     let onPrevious: () -> Void
     let onNext: () -> Void
     let onFinish: () -> Void
 
     var body: some View {
         VStack(spacing: 10) {
-            HStack(spacing: 6) {
-                // Always present, just invisible when complete — reserving the space keeps the
-                // count text from sliding sideways as the icon appears and disappears.
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .opacity(isComplete ? 0 : 1)
-                Text("\(enteredCount) of \(totalCount) entered")
-                    .font(RoundPlayFont.archivo(18, .bold))
-                    .foregroundStyle(.primary)
+            if showsEnteredCount {
+                HStack(spacing: 6) {
+                    // Always present, just invisible when complete — reserving the space keeps the
+                    // count text from sliding sideways as the icon appears and disappears.
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .opacity(isComplete ? 0 : 1)
+                    Text("\(enteredCount) of \(totalCount) entered")
+                        .font(RoundPlayFont.archivo(18, .bold))
+                        .foregroundStyle(.primary)
+                }
             }
 
             HStack(spacing: 10) {
