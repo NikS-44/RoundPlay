@@ -319,3 +319,63 @@ func roundShapeEmpty() throws {
     #expect(shape.worst == nil)
     #expect(shape.counts.isEmpty)
 }
+
+@Test("History compares against full rounds at the same course and segment")
+func soloHistoryLine() throws {
+    let context = try inMemoryContext()
+    let course = validCourseRecord()
+    context.insert(course)
+    let engineCourse = try #require(course.engineCourse)
+    let playerID = UUID()
+
+    // Completion dates are explicit and days apart. "Last time" is decided by a sort on
+    // completedAt, and rounds stamped with Date() inside one test body land microseconds apart —
+    // which round sorts first would be luck, and the assertion below would flap.
+    let day = 86_400.0
+    let base = Date(timeIntervalSince1970: 1_700_000_000)
+
+    /// An 18-hole round where every hole is `strokes`. `holes` under 18 leaves it partial.
+    func round(_ strokes: Int, daysAgo: Double, holes: Int = 18, complete: Bool = true,
+               courseID: UUID = testCourseID, segment: RoundSegment = .total,
+               player: UUID = playerID) throws -> RoundRecord {
+        let record = RoundRecord(courseID: courseID, courseName: "Test Links", holeSegment: segment)
+        let seat = SeatRecord(playerID: player, name: "Me", courseHandicap: 0, position: 0)
+        record.seats = [seat]
+        context.insert(record)
+        for hole in segment.holeRange.prefix(holes) {
+            try EngineBridge.appendStrokes(
+                strokes, hole: hole, playerID: player, to: record,
+                enteredBy: player, enteredByName: "Me", in: context
+            )
+        }
+        if complete { record.completedAt = base.addingTimeInterval(-daysAgo * day) }
+        try context.save()
+        return record
+    }
+
+    let current = try round(4, daysAgo: 0)   // gross 72, today
+
+    // No prior rounds at all.
+    #expect(SoloRoundHistory.line(for: current, course: engineCourse, playerID: playerID, in: context) == nil)
+
+    // A worse prior round makes this one the best.
+    _ = try round(5, daysAgo: 30)            // gross 90
+    let best = SoloRoundHistory.line(for: current, course: engineCourse, playerID: playerID, in: context)
+    #expect(best == "Your best at Test Links.")
+
+    // A better round, played more recently than the 90, becomes both the best and the last time.
+    _ = try round(3, daysAgo: 7)             // gross 54
+    let compared = SoloRoundHistory.line(for: current, course: engineCourse, playerID: playerID, in: context)
+    #expect(compared == "18 worse than last time · best there is 54.")
+
+    // Excluded: partial rounds, other courses, other segments, unfinished rounds, other players.
+    // Each would otherwise be the most recent round and a new personal best, so if any leaks in,
+    // the line changes and this assertion catches it.
+    _ = try round(1, daysAgo: 1, holes: 4)
+    _ = try round(1, daysAgo: 1, courseID: UUID())
+    _ = try round(1, daysAgo: 1, segment: .front)
+    _ = try round(1, daysAgo: 1, complete: false)
+    _ = try round(1, daysAgo: 1, player: UUID())
+    let unchanged = SoloRoundHistory.line(for: current, course: engineCourse, playerID: playerID, in: context)
+    #expect(unchanged == compared)
+}
