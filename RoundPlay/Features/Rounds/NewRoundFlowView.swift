@@ -184,11 +184,10 @@ private struct PlayerCountStep: View {
                 stepContent
             }
 
-            RoundBuilderContinueButton(
-                title: "Next",
-                isEnabled: model.selectedGroupCount != nil,
-                action: onGroup
-            )
+            RoundBuilderContinueButton(title: "Next") {
+                model.commitGroupCount()
+                onGroup()
+            }
         }
         .sensoryFeedback(RoundPlayHaptics.selection, trigger: model.selectedGroupCount)
         .navigationTitle("Players")
@@ -260,7 +259,7 @@ private struct PlayerCountStep: View {
     private func countCell(_ count: Int) -> some View {
         let isSelected = model.selectedGroupCount == count
         return Button {
-            model.chooseGroupCount(count)
+            model.selectedGroupCount = count
         } label: {
             Text("\(count)")
                 .font(RoundPlayFont.archivo(27, .bold))
