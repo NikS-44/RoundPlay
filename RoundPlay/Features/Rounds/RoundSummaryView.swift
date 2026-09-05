@@ -117,18 +117,20 @@ struct RoundSummaryView: View {
                 .buttonStyle(RoundPlayRowButtonStyle())
                 .roundPlayListRowSeparatorFullWidth()
 
-                Button {
-                    onShowStandings()
-                } label: {
-                    HubRow(
-                        icon: "chart.bar",
-                        title: "Standings",
-                        subtitle: hasGames ? "Hole-by-hole breakdown" : "No games this round",
-                        showsChevron: true
-                    )
+                if !round.isSolo {
+                    Button {
+                        onShowStandings()
+                    } label: {
+                        HubRow(
+                            icon: "chart.bar",
+                            title: "Standings",
+                            subtitle: hasGames ? "Hole-by-hole breakdown" : "No games this round",
+                            showsChevron: true
+                        )
+                    }
+                    .buttonStyle(RoundPlayRowButtonStyle())
+                    .roundPlayListRowSeparatorFullWidth()
                 }
-                .buttonStyle(RoundPlayRowButtonStyle())
-                .roundPlayListRowSeparatorFullWidth()
             }
         }
         .listSectionSpacing(.compact)

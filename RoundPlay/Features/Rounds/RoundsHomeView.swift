@@ -617,8 +617,13 @@ struct RoundTabsView: View {
                             .currentHole(in: round.holeSegment)
                     )
                 }
-                Tab("Standings", systemImage: "chart.bar", value: RoundTab.standings) {
-                    RoundDashboardView(round: round, course: course)
+                // Solo standings would be a single stroke-play row, and its one useful number —
+                // your score against par — is already in the hole header while you play and in
+                // the summary once you finish.
+                if !round.isSolo {
+                    Tab("Standings", systemImage: "chart.bar", value: RoundTab.standings) {
+                        RoundDashboardView(round: round, course: course)
+                    }
                 }
             }
             .toolbar(.hidden, for: .tabBar)
@@ -642,6 +647,13 @@ struct RoundTabsView: View {
             }
             // Leaving the round from the scorecard must hand portrait back too.
             .onDisappear { OrientationLock.shared.requestPortrait() }
+            // A solo round has no Standings tab. Finishing while it happened to be selected would
+            // otherwise strand `selection` on a tab that no longer exists in the TabView.
+            .onChange(of: round.isComplete) {
+                if round.isSolo && selection == .standings {
+                    selection = round.isComplete ? .summary : .hole
+                }
+            }
             // The nav bar costs vertical space, which is the scarce dimension in landscape, and
             // the tab already names the screen.
             .toolbar(selection == .scorecard ? .hidden : .visible, for: .navigationBar)
