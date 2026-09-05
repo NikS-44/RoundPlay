@@ -237,16 +237,16 @@ struct HoleScreenView: View {
                     Button {
                         isJumpingToHole = true
                     } label: {
-                        // Only the text takes part in layout so the principal item centres on
-                        // "Hole X"; the chevron is an overlay just off the trailing edge.
-                        Text("Hole \(hole)")
-                            .font(RoundPlayFont.archivo(22, .bold))
-                            .contentTransition(.numericText())
-                            .overlay(alignment: .trailing) {
-                                Image(systemName: "chevron.up.chevron.down")
-                                    .font(.system(size: 13, weight: .bold))
-                                    .offset(x: 22)
-                            }
+                        // A real, in-layout chevron, not a zero-width overlay — see the matching
+                        // note in RoundTabsView, where the same cluster sits over the same solo
+                        // score and needed to actually center on it.
+                        HStack(spacing: 4) {
+                            Text("Hole \(hole)")
+                                .font(RoundPlayFont.archivo(22, .bold))
+                                .contentTransition(.numericText())
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.system(size: 13, weight: .bold))
+                        }
                     }
                     .tint(.primary)
                 }

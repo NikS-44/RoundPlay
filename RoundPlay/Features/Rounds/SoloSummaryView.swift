@@ -41,14 +41,18 @@ struct SoloSummaryView: View {
         return holes.reduce(0) { $0 + (state.gross(hole: $1, player: seat.playerID) ?? 0) }
     }
 
-    private var net: Int {
-        guard let seat else { return 0 }
-        return holes.reduce(0) { $0 + (state.net(hole: $1, player: seat.playerID) ?? 0) }
-    }
-
     private var versusPar: Int {
         guard let seat else { return 0 }
         return RelativeToPar.grossVersusPar(state: state, course: course, playerID: seat.playerID, holes: holes)
+    }
+
+    /// The board-tuned variants, not the standard light/dark-adaptive `scoreUnderPar`/
+    /// `scoreOverPar` — those are tuned against a system background, and this sits on the same
+    /// near-black board `RoundSummaryView`'s money figure already uses these colors against.
+    private var relativeToParColor: Color {
+        if versusPar < 0 { return RoundPlayColors.moneyPositiveOnBoard }
+        if versusPar > 0 { return RoundPlayColors.moneyNegativeOnBoard }
+        return RoundPlayColors.paperOnBoard
     }
 
     private var shape: RoundShape {
@@ -150,19 +154,24 @@ struct SoloSummaryView: View {
 
             Divider().overlay(RoundPlayColors.paperOnBoard.opacity(0.15))
 
-            HStack(alignment: .firstTextBaseline, spacing: 14) {
-                Text("\(gross)")
-                    .font(RoundPlayFont.archivo(46, .black))
-                    .tracking(-2)
-                    .foregroundStyle(RoundPlayColors.paperOnBoard)
+            // Gross, labeled, on the left — the same eyebrow-then-big-number pattern the hole
+            // header already uses for Par and Handicap. Relative-to-par stands alone on the
+            // right at the same size and needs no label: "+4" reads as a score on sight the way
+            // every golf leaderboard shows it, the way a bare "40" would not.
+            HStack(alignment: .lastTextBaseline) {
                 VStack(alignment: .leading, spacing: 2) {
                     RoundPlayTypography.eyebrow("Gross")
                         .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.55))
-                    Text("\(RelativeToPar.label(versusPar)) · net \(net)")
-                        .font(RoundPlayFont.archivo(14, .semiBold))
-                        .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.9))
+                    Text("\(gross)")
+                        .font(RoundPlayFont.archivo(46, .black))
+                        .tracking(-2)
+                        .foregroundStyle(RoundPlayColors.paperOnBoard)
                 }
                 Spacer()
+                Text(RelativeToPar.label(versusPar))
+                    .font(RoundPlayFont.archivo(46, .black))
+                    .tracking(-2)
+                    .foregroundStyle(relativeToParColor)
             }
 
             if let historyLine {

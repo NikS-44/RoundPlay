@@ -131,9 +131,9 @@ final class NewRoundModel {
     }
 
     /// Collapses the builder to a single seat holding the player recorded at onboarding.
-    func makeSolo(in context: ModelContext) {
+    func makeSolo(in context: ModelContext, defaults: UserDefaults = .standard) {
         playerCount = 1
-        seats[0].assign(to: MyPlayer.resolve(in: context))
+        seats[0].assign(to: MyPlayer.resolve(in: context, defaults: defaults))
     }
 
     // MARK: - Step numbering

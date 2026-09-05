@@ -125,24 +125,33 @@ func groupKeepsChosenHandicap() {
     #expect(model.effectiveHandicapSettings.mode == .offTheLow)
 }
 
-/// Every test here reads or writes `MyPlayer.defaultsKey` in the real, process-wide
-/// `UserDefaults.standard` — directly, or indirectly through `NewRoundModel.makeSolo`. Swift
-/// Testing runs free `@Test` functions concurrently by default, and two of these racing on the
-/// same key produced exactly the flake this suite prevents: one test's `resolve` returning the
-/// "me" player another test had just created and overwritten the key with. `.serialized` runs
-/// this suite's tests one at a time; every other test in the file keeps running in parallel.
-@Suite(.serialized)
+/// A private, disposable `UserDefaults` domain — never `.standard`.
+///
+/// `RoundPlayTests` is an app-hosted target: `xcodebuild test` launches the real `RoundPlay.app`
+/// on the simulator to run these tests, so `UserDefaults.standard` inside a test *is* that
+/// simulator's real, persistent app defaults — the same store a manually-onboarded "me" player's
+/// id lives in. A test that clears `MyPlayer.defaultsKey` on `.standard` for isolation wipes that
+/// real pointer, and the next real solo round self-heals by minting a second "Me" behind it —
+/// exactly how this app ended up with duplicate "Me" roster entries during development. Every
+/// test that touches `MyPlayer` must inject one of these instead.
+private func isolatedDefaults() -> UserDefaults {
+    UserDefaults(suiteName: "AppModelTests.\(UUID().uuidString)")!
+}
+
+/// Grouped for readability — no longer for isolation. Before `defaults` injection existed, these
+/// tests raced on the single shared `UserDefaults.standard` key and needed `.serialized` to avoid
+/// stepping on each other; each now gets its own private suite, so they run fully in parallel
+/// like every other test in this file.
 struct SoloMyPlayerTests {
     @Test("Solo rounds play the full handicap, never off-the-low")
     func soloUsesFullHandicap() throws {
-        UserDefaults.standard.removeObject(forKey: MyPlayer.defaultsKey)
         let context = try inMemoryContext()
         let course = validCourseRecord()
         context.insert(course)
 
         let model = NewRoundModel()
         model.course = course
-        model.makeSolo(in: context)
+        model.makeSolo(in: context, defaults: isolatedDefaults())
 
         #expect(model.isSolo)
         #expect(model.effectiveHandicapSettings.mode == .full)
@@ -151,43 +160,38 @@ struct SoloMyPlayerTests {
 
         let round = try #require(model.makeRound(in: context))
         #expect(round.handicapSettings.mode == .full)
-        UserDefaults.standard.removeObject(forKey: MyPlayer.defaultsKey)
     }
 
     @Test("A solo builder shows only course, players and holes")
     func soloSkipsGroupOnlySteps() throws {
-        UserDefaults.standard.removeObject(forKey: MyPlayer.defaultsKey)
         let context = try inMemoryContext()
         let solo = NewRoundModel()
-        solo.makeSolo(in: context)
+        solo.makeSolo(in: context, defaults: isolatedDefaults())
         #expect(solo.activeStepsForTesting == [.course, .playerCount, .holes])
         #expect(solo.totalSteps == 3)
 
         let group = NewRoundModel()
         #expect(group.activeStepsForTesting == [.course, .playerCount, .knownPlayers, .fillRemaining, .strokes, .holes, .games])
-        UserDefaults.standard.removeObject(forKey: MyPlayer.defaultsKey)
     }
 
     @Test("The solo seat is the onboarding player, and is created if it has gone missing")
     func soloSeatResolvesToMe() throws {
         let context = try inMemoryContext()
-        UserDefaults.standard.removeObject(forKey: MyPlayer.defaultsKey)
+        let defaults = isolatedDefaults()
 
         // Nothing stored: a "Me" player is created and the key written.
-        let created = MyPlayer.resolve(in: context)
+        let created = MyPlayer.resolve(in: context, defaults: defaults)
         #expect(created.name == "Me")
-        #expect(UserDefaults.standard.string(forKey: MyPlayer.defaultsKey) == created.id.uuidString)
+        #expect(defaults.string(forKey: MyPlayer.defaultsKey) == created.id.uuidString)
 
         // Stored and present: the same record comes back, not a second one.
-        #expect(MyPlayer.resolve(in: context).id == created.id)
+        #expect(MyPlayer.resolve(in: context, defaults: defaults).id == created.id)
 
         // Stored but deleted from the roster: a fresh record replaces it.
         context.delete(created)
         try context.save()
-        let replacement = MyPlayer.resolve(in: context)
+        let replacement = MyPlayer.resolve(in: context, defaults: defaults)
         #expect(replacement.id != created.id)
-
-        UserDefaults.standard.removeObject(forKey: MyPlayer.defaultsKey)
     }
 
     @Test("Solo rounds give strokes, so net differs from gross")
@@ -198,11 +202,12 @@ struct SoloMyPlayerTests {
 
         let me = PlayerRecord(name: "Nik", handicapIndex: 9)
         context.insert(me)
-        UserDefaults.standard.set(me.id.uuidString, forKey: MyPlayer.defaultsKey)
+        let defaults = isolatedDefaults()
+        defaults.set(me.id.uuidString, forKey: MyPlayer.defaultsKey)
 
         let model = NewRoundModel()
         model.course = course
-        model.makeSolo(in: context)
+        model.makeSolo(in: context, defaults: defaults)
         let round = try #require(model.makeRound(in: context))
         let seat = try #require(round.orderedSeats.first)
         #expect(seat.courseHandicap == 9)
@@ -218,8 +223,6 @@ struct SoloMyPlayerTests {
         // Stroke index 1 is hole 1 in the fixture, and a 9-handicap gets a shot there.
         #expect(state.strokesReceived(hole: 1, player: seat.playerID) == 1)
         #expect(state.net(hole: 1, player: seat.playerID) == 4)
-
-        UserDefaults.standard.removeObject(forKey: MyPlayer.defaultsKey)
     }
 }
 

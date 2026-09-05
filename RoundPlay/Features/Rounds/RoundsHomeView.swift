@@ -666,18 +666,20 @@ struct RoundTabsView: View {
                         Button {
                             isJumpingToHole = true
                         } label: {
-                            // Only the text takes part in layout, so the principal item is exactly
-                            // as wide as "Hole X" and lands on the true centre of the nav bar. The
-                            // chevron is an overlay pinned just off the trailing edge and adds no
-                            // width, so it can't push the text off-centre.
-                            Text("Hole \(currentHole)")
-                                .font(RoundPlayFont.archivo(22, .bold))
-                                .contentTransition(.numericText())
-                                .overlay(alignment: .trailing) {
-                                    Image(systemName: "chevron.up.chevron.down")
-                                        .font(.system(size: 13, weight: .bold))
-                                        .offset(x: 22)
-                                }
+                            // The chevron is a real, in-layout sibling of the text, not a
+                            // zero-width overlay — a `.principal` item centers its own full
+                            // bounding box in the nav bar, so leaving the chevron out of layout
+                            // centered "Hole X" alone and let the chevron hang unbalanced off its
+                            // trailing edge, reading as off-center against anything (like the
+                            // solo score) that's centered on the bar's true middle. Including it
+                            // centers the whole "Hole X ⌄" cluster instead.
+                            HStack(spacing: 4) {
+                                Text("Hole \(currentHole)")
+                                    .font(RoundPlayFont.archivo(22, .bold))
+                                    .contentTransition(.numericText())
+                                Image(systemName: "chevron.up.chevron.down")
+                                    .font(.system(size: 13, weight: .bold))
+                            }
                         }
                         .tint(.primary)
                     }
