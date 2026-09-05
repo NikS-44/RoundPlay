@@ -263,9 +263,13 @@ final class NewRoundModel {
     ///
     /// Filtering rather than showing-then-erroring is deliberate: a threesome should never be
     /// offered Wolf-for-four and then told no.
-    var eligibleGames: [GameMetadata] {
+    var eligibleGames: [GameMetadata] { eligibleGames(forPlayerCount: seats.count) }
+
+    /// Games playable at an arbitrary group size, so the players step can show what a size buys
+    /// you *before* it's committed — `seats` still holds the previous count while you're deciding.
+    func eligibleGames(forPlayerCount count: Int) -> [GameMetadata] {
         GameLibrary.all.filter { metadata in
-            guard metadata.playerRange.contains(seats.count) else { return false }
+            guard metadata.playerRange.contains(count) else { return false }
             // Nassau's three bets are defined over a full 18-hole round in this release.
             return !(metadata.gameType == .nassau && holeSegment != .total)
         }

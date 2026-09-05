@@ -251,7 +251,34 @@ private struct PlayerCountStep: View {
                 ForEach(counts, id: \.self) { count in countCell(count) }
             }
             .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 16, trailing: 16))
+            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 16))
+
+            // Group size decides which games exist — a foursome can play seven, a sixsome three —
+            // and without this you don't find that out until the games step, five screens later.
+            RoundPlayTypography.caption(gamesSummary)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+                .animation(.easeOut(duration: 0.15), value: model.selectedGroupCount)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 16, trailing: 16))
+    }
+
+    /// "3 games — Stroke Play, Skins and Stableford" when the whole list fits, otherwise a count
+    /// plus the size-specific ones. Naming Stroke Play, Skins and Stableford in the long case
+    /// would waste the line: they're available at every size, so they're never what a count costs
+    /// you.
+    private var gamesSummary: String {
+        let games = model.eligibleGames(forPlayerCount: model.selectedGroupCount)
+        let names = games.map(\.displayName)
+        guard names.count > 4 else {
+            return "\(names.count) games — \(names.formatted(.list(type: .and)))"
+        }
+        let sizeSpecific = games
+            .filter { !($0.playerRange.lowerBound <= 2 && $0.playerRange.upperBound >= 8) }
+            .prefix(3)
+            .map(\.displayName)
+        return "\(names.count) games, including \(sizeSpecific.formatted(.list(type: .and)))"
     }
 
     /// Selecting a size, not navigating on it — the same accent fill and border every other
