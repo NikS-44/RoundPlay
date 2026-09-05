@@ -17,3 +17,4 @@ fastlane/test_output
 
 # wrangler local cache (contains account id and email)
 .wrangler/
+.superpowers/
