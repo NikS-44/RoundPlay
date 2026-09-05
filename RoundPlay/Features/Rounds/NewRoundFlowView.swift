@@ -24,7 +24,11 @@ struct NewRoundFlowView: View {
         NavigationStack(path: $path) {
             Group {
                 if let startingCourse {
-                    PlayerCountStep(model: model) { path.append(Step.knownPlayers) }
+                    PlayerCountStep(
+                        model: model,
+                        onSolo: { path.append(Step.holes) },
+                        onGroup: { path.append(Step.knownPlayers) }
+                    )
                         .onAppear {
                             model.course = startingCourse
                             // Onboarding already picked the course, so the course step never
@@ -44,7 +48,11 @@ struct NewRoundFlowView: View {
             .navigationDestination(for: Step.self) { step in
                 switch step {
                 case .playerCount:
-                    PlayerCountStep(model: model) { path.append(Step.knownPlayers) }
+                    PlayerCountStep(
+                        model: model,
+                        onSolo: { path.append(Step.holes) },
+                        onGroup: { path.append(Step.knownPlayers) }
+                    )
                 case .knownPlayers:
                     // Every seat already has a real roster player — there's nothing left to
                     // fill in, so skip straight to Holes instead of showing an empty-feeling
@@ -61,7 +69,11 @@ struct NewRoundFlowView: View {
                 case .strokes:
                     StrokesStepView(model: model) { path.append(Step.holes) }
                 case .holes:
-                    HoleSegmentStep(model: model) { path.append(Step.games) }
+                    // Solo has no games step to walk to — the holes screen is the last one, so its
+                    // button starts the round rather than continuing the flow.
+                    HoleSegmentStep(model: model) {
+                        if model.isSolo { start() } else { path.append(Step.games) }
+                    }
                 case .games:
                     GameSetupView(
                         model: model,
@@ -105,11 +117,7 @@ struct NewRoundFlowView: View {
     /// first seat means most groups never see an unclaimed seat for their own scorekeeper.
     /// Still just a normal seat assignment, so swapping them out is one tap like any other.
     private func autoAssignMe() {
-        guard let idString = UserDefaults.standard.string(forKey: "myPlayerID"),
-              let id = UUID(uuidString: idString)
-        else { return }
-        let descriptor = FetchDescriptor<PlayerRecord>(predicate: #Predicate { $0.id == id })
-        guard let me = try? modelContext.fetch(descriptor).first,
+        guard let me = MyPlayer.existing(in: modelContext),
               !model.seats.contains(where: { $0.assignedPlayer?.id == me.id }),
               let openSeat = model.seats.first(where: { $0.assignedPlayer == nil })
         else { return }
@@ -156,59 +164,90 @@ private struct BestBallTeamsStep: View {
 
 /// One job: how many seats. Nothing else on the screen to look at.
 private struct PlayerCountStep: View {
+    @Environment(\.modelContext) private var modelContext
     @Bindable var model: NewRoundModel
-    let onContinue: () -> Void
+    let onSolo: () -> Void
+    let onGroup: () -> Void
+
+    /// Seven counts across a four-column grid would leave a ragged last row, so the rows are
+    /// split 4 + 3 and each row fills the width.
+    private let topRow = [2, 3, 4, 5]
+    private let bottomRow = [6, 7, 8]
 
     var body: some View {
-        // Same shape as every other step — RoundBuilderStepHeader at the top of a List, continue
-        // button pinned below — so the step label and title land in the exact same spot on screen
-        // no matter which step is showing, instead of this one floating vertically centered.
-        VStack(spacing: 0) {
-            RoundPlayList.plain {
-                RoundBuilderStepHeader(
-                    step: model.stepNumber(for: .playerCount),
-                    totalSteps: model.totalSteps,
-                    title: "How many players?"
-                )
+        RoundPlayList.plain {
+            RoundBuilderStepHeader(
+                step: model.stepNumber(for: .playerCount),
+                totalSteps: model.totalSteps,
+                title: "How many players?",
+                detail: "Tap to continue"
+            )
 
-                HStack(spacing: 28) {
-                    Spacer()
-                    Button {
-                        model.playerCount -= 1
-                    } label: {
-                        Image(systemName: "minus.circle.fill")
-                            .font(.system(size: 40))
+            Button {
+                model.makeSolo(in: modelContext)
+                onSolo()
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "figure.golf")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(RoundPlayColors.paperOnBoard)
+                        .frame(width: 38, height: 38)
+                        .background(Circle().fill(RoundPlayColors.accent))
+                    VStack(alignment: .leading, spacing: 1) {
+                        RoundPlayTypography.headline("Just me")
+                        RoundPlayTypography.caption("Solo round · no games")
+                            .foregroundStyle(.secondary)
                     }
-                    .buttonStyle(.plain)
-                    .disabled(model.playerCount <= 1)
-
-                    RoundPlayTypography.hero("\(model.playerCount)")
-                        .frame(minWidth: 80)
-
-                    Button {
-                        model.playerCount += 1
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 40))
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(model.playerCount >= 8)
                     Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(RoundPlayColors.accent)
                 }
-                .foregroundStyle(RoundPlayColors.accent)
-                .padding(.top, 40)
-                .listRowSeparator(.hidden)
-                // Two independent buttons in one List row need `.buttonStyle(.plain)` on each —
-                // without it, the row's own tap handling can swallow taps on anything but the
-                // first control. This is what broke +/- after this step moved from a bare VStack
-                // into a List for layout consistency with the other steps.
+                .padding(16)
+                .frame(maxWidth: .infinity)
+                .background(
+                    RoundedRectangle(cornerRadius: 15, style: .continuous)
+                        .fill(RoundPlayColors.accent.opacity(0.10))
+                        .strokeBorder(RoundPlayColors.accent.opacity(0.42), lineWidth: 1.5)
+                )
             }
+            .buttonStyle(.plain)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 14, trailing: 16))
 
-            RoundBuilderContinueButton(title: "Next", action: onContinue)
+            RoundPlaySectionHeader("Or a group")
+
+            VStack(spacing: 10) {
+                HStack(spacing: 10) {
+                    ForEach(topRow, id: \.self) { count in countCell(count) }
+                }
+                HStack(spacing: 10) {
+                    ForEach(bottomRow, id: \.self) { count in countCell(count) }
+                }
+            }
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 16, trailing: 16))
         }
-        .sensoryFeedback(RoundPlayHaptics.selection, trigger: model.playerCount)
         .navigationTitle("Players")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func countCell(_ count: Int) -> some View {
+        Button {
+            model.playerCount = count
+            onGroup()
+        } label: {
+            Text("\(count)")
+                .font(RoundPlayFont.archivo(27, .bold))
+                .frame(maxWidth: .infinity, minHeight: 64)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(RoundPlayColors.fillSecondary)
+                )
+                .foregroundStyle(Color.primary)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(count) players")
     }
 }
 
@@ -391,7 +430,8 @@ private struct HoleSegmentStep: View {
                 RoundBuilderStepHeader(
                     step: model.stepNumber(for: .holes),
                     totalSteps: model.totalSteps,
-                    title: "How many holes are you playing?"
+                    title: "How many holes are you playing?",
+                    showsStepCount: !model.isSolo
                 )
 
                 HStack(spacing: 10) {
@@ -407,7 +447,7 @@ private struct HoleSegmentStep: View {
                 .listRowSeparator(.hidden)
             }
 
-            RoundBuilderContinueButton(title: "Next", action: onContinue)
+            RoundBuilderContinueButton(title: model.isSolo ? "Start Round" : "Next", action: onContinue)
         }
         .navigationTitle("Holes")
         .navigationBarTitleDisplayMode(.inline)

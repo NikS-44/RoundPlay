@@ -56,7 +56,7 @@ struct OnboardingFlowView: View {
         modelContext.insert(me)
         // Remembered so every future round can default this seat in automatically — the whole
         // point of onboarding asking your name once instead of every round asking again.
-        UserDefaults.standard.set(me.id.uuidString, forKey: "myPlayerID")
+        UserDefaults.standard.set(me.id.uuidString, forKey: MyPlayer.defaultsKey)
         for course in favorites {
             modelContext.insert(FavoriteCourseRecord(
                 openGolfID: course.id, name: course.name, city: course.city, state: course.state

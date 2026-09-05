@@ -119,6 +119,23 @@ final class NewRoundModel {
     /// computed playing handicap outright rather than feeding back through allowance and mode.
     var strokeOverrides: [UUID: Int] = [:]
 
+    /// The handicap settings the round is actually built with.
+    ///
+    /// Solo always plays the full playing handicap. `HandicapSettings.default` is `.offTheLow`,
+    /// which subtracts the lowest handicap in the round from everyone — and in a one-player round
+    /// *you* are the lowest, so you would receive zero strokes on every hole and net would silently
+    /// equal gross forever, with nothing on screen to explain why. `.full` is what `StrokeMode`
+    /// documents as correct for stroke play.
+    var effectiveHandicapSettings: HandicapSettings {
+        isSolo ? HandicapSettings(mode: .full, allowancePercent: 100, maxStrokes: nil) : handicapSettings
+    }
+
+    /// Collapses the builder to a single seat holding the player recorded at onboarding.
+    func makeSolo(in context: ModelContext) {
+        playerCount = 1
+        seats[0].assign(to: MyPlayer.resolve(in: context))
+    }
+
     // MARK: - Step numbering
 
     /// The screens the round builder can walk through, in order.
@@ -128,21 +145,32 @@ final class NewRoundModel {
     /// hardcoded per screen. They were, and disagreed: the course step said "Step 1 of 6" while
     /// every screen after it said "of 7", and a group that filled all four seats from the roster
     /// counted 1, 2, 3, 5, 6 with no step 4 in sight.
-    enum BuilderStep: CaseIterable {
+    enum BuilderStep: CaseIterable, Equatable {
         case course, playerCount, knownPlayers, fillRemaining, strokes, holes, games, bestBallTeams
     }
+
+    /// True once the builder is making a one-player round.
+    ///
+    /// The steps that exist only to sort out who is giving whom shots, and which games the group
+    /// is playing, all fall away — there is no group.
+    var isSolo: Bool { seats.count == 1 }
 
     /// Only the steps this particular round will actually show.
     private var activeSteps: [BuilderStep] {
         BuilderStep.allCases.filter { step in
             switch step {
             case .course: !skipsCourseStep
-            case .fillRemaining: seats.contains(where: \.isAnonymous)
+            case .knownPlayers, .strokes, .games: !isSolo
+            case .fillRemaining: !isSolo && seats.contains(where: \.isAnonymous)
             case .bestBallTeams: configurations.contains { $0.gameType == .bestBall }
             default: true
             }
         }
     }
+
+    /// Exposed for tests. `activeSteps` is private because nothing in the app should branch on the
+    /// step list directly — it reads step *numbers* through `stepNumber(for:)`.
+    var activeStepsForTesting: [BuilderStep] { activeSteps }
 
     var totalSteps: Int { activeSteps.count }
 
@@ -276,7 +304,7 @@ final class NewRoundModel {
         guard let course, course.engineCourse != nil else { return nil }
 
         let round = RoundRecord(courseID: course.id, courseName: course.name, holeSegment: holeSegment)
-        round.handicapSettings = handicapSettings
+        round.handicapSettings = effectiveHandicapSettings
         var seatRecords: [SeatRecord] = []
         for (index, draft) in seats.enumerated() {
             let resolved = draft.resolvedForRound(in: context)
