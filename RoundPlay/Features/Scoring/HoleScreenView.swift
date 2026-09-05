@@ -126,10 +126,6 @@ struct HoleScreenView: View {
         }
     }
 
-    private var wolfDeclarationPending: Bool {
-        requiredInputs.contains(.partnerChoice) && state.wolfDeclaration(hole: hole) == nil
-    }
-
     /// The score every carousel opens centered on — the same value for every player, so the
     /// strips line up column by column instead of each drifting to its own net par. This is the
     /// hole's par adjusted by the group's *average* handicap stroke, rounded to the nearest whole
@@ -165,61 +161,17 @@ struct HoleScreenView: View {
 
             ScrollViewReader { scrollProxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Above the scores because it is a question about the hole nobody has played
-                    // yet, and because money agreed after the fact isn't agreed at all. It does
-                    // not gate the strips the way the Wolf's declaration does — a group that
-                    // would rather just play on can score straight through it.
-                    if let pressOffer { pressPrompt(pressOffer) }
-
-                    // Wolf declares before anyone's tee shot is scored — showing the score strips
-                    // first would let the group enter scores while the Wolf is still deciding
-                    // whether to go it alone, which the real game never allows. Once declared, the
-                    // choice moves up into the header and this prompt gets out of the way.
-                    if wolfDeclarationPending {
-                        wolfPrompt
-                    } else {
-                        ForEach(round.orderedSeats) { seat in
-                            VStack(alignment: .leading, spacing: 6) {
-                                HStack {
-                                    RoundPlayTypography.headline(seat.name)
-                                    // Best Ball's team is fixed for the round; Sixes' partner
-                                    // changes every six holes, so it's looked up per hole instead.
-                                    if let team = round.bestBallTeamLabel(for: seat) ?? round.sixesTeamLabel(for: seat, atHole: hole) {
-                                        TeamBadge(team: team)
-                                    }
-                                    if state.strokesReceived(hole: hole, player: seat.playerID) > 0 {
-                                        RoundPlayTypography.eyebrow("+1 stroke")
-                                            .foregroundStyle(RoundPlayColors.accent)
-                                    }
-                                    Spacer()
-                                }
-                                HStack(alignment: .bottom, spacing: 8) {
-                                    ScoreStripView(
-                                        par: course.hole(hole)?.par ?? 4,
-                                        strokesReceived: state.strokesReceived(hole: hole, player: seat.playerID),
-                                        groupCenterScore: groupExpectedScore,
-                                        selected: state.gross(hole: hole, player: seat.playerID)
-                                    ) { strokes in
-                                        record(strokes: strokes, for: seat)
-                                    }
-                                    // Rebuild per hole so the carousel re-centers on the new
-                                    // hole's expected score. Without this the view identity is
-                                    // just the seat, so `onAppear` never fires again and hole 2
-                                    // opens still scrolled to wherever hole 1 was left.
-                                    .id(hole)
-                                    if isPostCompletionEdit, state.gross(hole: hole, player: seat.playerID) != nil {
-                                        Button("Clear") { clearScore(for: seat) }
-                                            .font(RoundPlayFont.archivo(12, .semiBold))
-                                            .foregroundStyle(RoundPlayColors.scoreOverPar)
-                                    }
-                                }
-                            }
-                        }
-
-                        if requiredInputs.contains(.holeEvents) { holeEventsPrompt }
-                    }
-                }
+                GroupScoreEntry(
+                    round: round,
+                    course: course,
+                    hole: hole,
+                    state: state,
+                    requiredInputs: requiredInputs,
+                    isPostCompletionEdit: isPostCompletionEdit,
+                    groupCenterScore: groupExpectedScore,
+                    onRecord: { strokes, seat in record(strokes: strokes, for: seat) },
+                    onClear: { seat in clearScore(for: seat) }
+                )
                 .padding()
                 .id("top")
             }
@@ -299,7 +251,7 @@ struct HoleScreenView: View {
         .sheet(isPresented: $isEditingWolf) {
             NavigationStack {
                 RoundPlayList.plain {
-                    wolfPrompt
+                    WolfDeclarationPrompt(round: round, hole: hole, state: state)
                 }
                 .navigationTitle("Wolf")
                 .navigationBarTitleDisplayMode(.inline)
@@ -418,82 +370,6 @@ struct HoleScreenView: View {
         }
     }
 
-    @ViewBuilder
-    private var wolfPrompt: some View {
-        let seats = round.orderedSeats
-        if !seats.isEmpty {
-            let wolfSeat = seats[(hole - 1) % seats.count]
-            WolfPromptView(
-                wolfName: wolfSeat.name,
-                candidates: seats
-                    .filter { $0.playerID != wolfSeat.playerID }
-                    .map { (id: $0.playerID, name: $0.name) },
-                declaration: state.wolfDeclaration(hole: hole)?.declaration
-            ) { declaration in
-                guard let scorekeeper else { return }
-                try? EngineBridge.appendWolfDeclaration(
-                    declaration, hole: hole, wolfID: wolfSeat.playerID, to: round,
-                    enteredBy: scorekeeper.playerID, enteredByName: scorekeeper.name,
-                    in: modelContext
-                )
-            }
-        }
-    }
-
-    /// The press question, but only on the hole the press would start on.
-    ///
-    /// Recomputed from the round rather than held in `@State`: correcting a score back on hole 2
-    /// has to be able to take the question on hole 3 away again.
-    private var pressOffer: NassauEngine.PressOffer? {
-        // Re-opening a finished round to fix a score is not the moment to be offered a new bet.
-        guard !isPostCompletionEdit else { return nil }
-        guard let offer = EngineBridge.nassauPressOffer(for: round, course: course),
-              offer.hole == hole else { return nil }
-        return offer
-    }
-
-    @ViewBuilder
-    private func pressPrompt(_ offer: NassauEngine.PressOffer) -> some View {
-        let names = round.orderedSeats.reduce(into: [UUID: String]()) { $0[$1.playerID] = $1.name }
-        PressPromptView(
-            offer: offer,
-            trailingName: names[offer.trailingPlayerID] ?? "They",
-            leadingName: names[offer.leadingPlayerID] ?? "the other side"
-        ) { decision in
-            guard let scorekeeper else { return }
-            try? EngineBridge.appendPress(
-                decision, hole: offer.hole, playerID: offer.trailingPlayerID, to: round,
-                enteredBy: scorekeeper.playerID, enteredByName: scorekeeper.name,
-                in: modelContext
-            )
-        }
-    }
-
-    @ViewBuilder
-    private var holeEventsPrompt: some View {
-        let winners = HoleEventKind.allCases.reduce(into: [HoleEventKind: UUID]()) { partial, kind in
-            partial[kind] = state.holeEventWinner(hole: hole, kind: kind)
-        }
-        HoleEventsPromptView(
-            players: round.orderedSeats.map { (id: $0.playerID, name: $0.name) },
-            winners: winners
-        ) { kind, playerID in
-            guard let scorekeeper else { return }
-            try? EngineBridge.appendHoleEvent(
-                kind, hole: hole, playerID: playerID, to: round,
-                enteredBy: scorekeeper.playerID, enteredByName: scorekeeper.name,
-                in: modelContext
-            )
-        } onClear: { kind in
-            guard let scorekeeper else { return }
-            try? EngineBridge.clearHoleEvent(
-                kind, hole: hole, to: round,
-                enteredBy: scorekeeper.playerID, enteredByName: scorekeeper.name,
-                in: modelContext
-            )
-        }
-    }
-
     private func record(strokes: Int, for seat: SeatRecord) {
         guard let scorekeeper else { return }
         try? EngineBridge.appendStrokes(
@@ -522,226 +398,6 @@ struct HoleScreenView: View {
             in: modelContext
         )
     }
-}
-
-/// Par and handicap — two of the three facts a golfer checks on the tee. The hole number itself
-/// is the nav-bar title now (tappable, to jump to another hole), so it no longer appears here.
-/// Par sits on the left with no border — it's not tappable, and the border was confusing people
-/// into thinking it was. Handicap mirrors it on the right at the same size.
-private struct HoleHeader: View {
-    let par: Int
-    let strokeIndex: Int
-    let leaderLine: String?
-    let wolfLine: String?
-    let onTapWolf: () -> Void
-
-    var body: some View {
-        VStack(spacing: 10) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 2) {
-                    RoundPlayTypography.eyebrow("Par")
-                        .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.6))
-                    Text("\(par)")
-                        .font(RoundPlayFont.archivo(36, .black))
-                        .tracking(-1.8)
-                        .foregroundStyle(RoundPlayColors.paperOnBoard)
-                        .contentTransition(.numericText())
-                }
-
-                Spacer()
-
-                if let wolfLine {
-                    Button(action: onTapWolf) {
-                        HStack(spacing: 4) {
-                            Text(wolfLine)
-                                .font(RoundPlayFont.archivo(15, .semiBold))
-                                .multilineTextAlignment(.center)
-                            Image(systemName: "pencil")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.6))
-                        }
-                        .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.85))
-                        .frame(maxWidth: 130)
-                        .padding(.top, 8)
-                    }
-                    .buttonStyle(.plain)
-                    Spacer()
-                } else if let leaderLine {
-                    Text(leaderLine)
-                        .font(RoundPlayFont.archivo(15, .semiBold))
-                        .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.85))
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: 120)
-                        .padding(.top, 8)
-                    Spacer()
-                }
-
-                VStack(alignment: .trailing, spacing: 2) {
-                    RoundPlayTypography.eyebrow("Handicap")
-                        .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.5))
-                    Text("\(strokeIndex)")
-                        .font(RoundPlayFont.archivo(36, .black))
-                        .tracking(-1.8)
-                        .foregroundStyle(RoundPlayColors.paperOnBoard)
-                        .contentTransition(.numericText())
-                }
-            }
-        }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 12)
-        .background(RoundPlayColors.board)
-    }
-}
-
-/// Jump straight to any hole — tapping the hole number is faster than eighteen taps of Next.
-private struct HoleJumpSheet: View {
-    @Binding var hole: Int
-    let holeRange: ClosedRange<Int>
-    let incompleteHoles: Set<Int>
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            Picker("Hole", selection: $hole) {
-                ForEach(Array(holeRange), id: \.self) { value in
-                    Label {
-                        Text("Hole \(value)")
-                    } icon: {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(RoundPlayColors.scoreOverPar)
-                            .opacity(incompleteHoles.contains(value) ? 1 : 0)
-                    }
-                    .tag(value)
-                }
-            }
-            .pickerStyle(.wheel)
-            .navigationTitle("Jump to Hole")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
-        }
-    }
-}
-
-/// A red banner telling the scorekeeper exactly why Finish Round didn't work.
-private struct IncompleteHoleBanner: View {
-    /// Bingo Bango Bongo's three tallies count toward completeness too, so on those rounds "missing
-    /// a score" is only half the story and sends the scorekeeper hunting for a score that's
-    /// already there.
-    let needsHoleEvents: Bool
-
-    private var message: String {
-        needsHoleEvents
-            ? "This hole isn't finished. Every player needs a score, and each tally needs a winner."
-            : "This hole is missing a score. Enter every player before finishing."
-    }
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "exclamationmark.triangle.fill")
-            Text(message)
-                .font(RoundPlayFont.archivo(13, .semiBold))
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .foregroundStyle(.white)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(RoundPlayColors.scoreOverPar)
-    }
-}
-
-private struct HoleNavigationBar: View {
-    let hole: Int
-    let holeRange: ClosedRange<Int>
-    let isComplete: Bool
-    let enteredCount: Int
-    /// Seats needing a score, plus any required hole-event tallies (Bingo Bango Bongo's three
-    /// winners) — not just the player count, when a game needs more than a stroke per hole.
-    let totalCount: Int
-    let isLastHole: Bool
-    let isPostCompletionEdit: Bool
-    let previousHoleIsIncomplete: Bool
-    let onPrevious: () -> Void
-    let onNext: () -> Void
-    let onFinish: () -> Void
-
-    var body: some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 6) {
-                // Always present, just invisible when complete — reserving the space keeps the
-                // count text from sliding sideways as the icon appears and disappears.
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .opacity(isComplete ? 0 : 1)
-                Text("\(enteredCount) of \(totalCount) entered")
-                    .font(RoundPlayFont.archivo(18, .bold))
-                    .foregroundStyle(.primary)
-            }
-
-            HStack(spacing: 10) {
-                Button(action: onPrevious) {
-                    Label("Previous Hole", systemImage: previousHoleIsIncomplete ? "exclamationmark.triangle.fill" : "chevron.left")
-                        .font(RoundPlayFont.archivo(18, .bold))
-                        .frame(maxWidth: .infinity, minHeight: 52)
-                }
-                .buttonStyle(.bordered)
-                .tint(RoundPlayColors.accent)
-                .disabled(hole == holeRange.lowerBound)
-
-                if isLastHole {
-                    Button(action: onFinish) {
-                        Label(
-                            isPostCompletionEdit ? "Done" : "Finish Round",
-                            systemImage: isComplete ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
-                        )
-                            .font(RoundPlayFont.archivo(20, .bold))
-                            .labelStyle(.trailingIcon)
-                            .frame(maxWidth: .infinity, minHeight: 52)
-                    }
-                    .roundPlayPrimaryButtonStyle()
-                    .tint(RoundPlayColors.accent)
-                } else {
-                    // The warning is a small icon swap, not a color change — a fully orange
-                    // button for "you haven't finished this hole yet" reads like an error state,
-                    // when it's just an ordinary, expected part of entering scores.
-                    Button(action: onNext) {
-                        Label("Next Hole", systemImage: isComplete ? "chevron.right" : "exclamationmark.triangle.fill")
-                            .font(RoundPlayFont.archivo(20, .bold))
-                            .labelStyle(.trailingIcon)
-                            .frame(maxWidth: .infinity, minHeight: 52)
-                    }
-                    .roundPlayPrimaryButtonStyle()
-                    .tint(RoundPlayColors.accent)
-                }
-            }
-        }
-        .padding(.horizontal)
-        .padding(.vertical, 10)
-        .background(RoundPlayColors.backgroundSecondaryGrouped)
-    }
-}
-
-/// Icon-after-title layout — "Next ›" reads more like forward motion than the default icon-first.
-private struct TrailingIconLabelStyle: LabelStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        HStack(spacing: 8) {
-            configuration.title
-            // A fixed-width slot for the icon — chevron and warning-triangle glyphs aren't the
-            // same width, so without this the whole label visibly shifts sideways every time
-            // completeness flips and the icon swaps.
-            configuration.icon
-                .frame(width: 20)
-        }
-    }
-}
-
-private extension LabelStyle where Self == TrailingIconLabelStyle {
-    static var trailingIcon: TrailingIconLabelStyle { TrailingIconLabelStyle() }
 }
 
 #Preview("Light") {
