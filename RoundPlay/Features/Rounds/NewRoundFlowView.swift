@@ -169,10 +169,11 @@ private struct PlayerCountStep: View {
     let onSolo: () -> Void
     let onGroup: () -> Void
 
-    /// Seven counts across a four-column grid would leave a ragged last row, so the rows are
-    /// split 4 + 3 and each row fills the width.
-    private let topRow = [2, 3, 4, 5]
-    private let bottomRow = [6, 7, 8]
+    /// Three equal columns, so every cell is the same size whether its row holds three counts or
+    /// one — a fixed column count does that for free; splitting rows by hand (4 then 3) stretched
+    /// the shorter row's cells wider than the first row's.
+    private let counts = Array(2...8)
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 3)
 
     var body: some View {
         RoundPlayList.plain {
@@ -215,15 +216,21 @@ private struct PlayerCountStep: View {
             .listRowSeparator(.hidden)
             .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 14, trailing: 16))
 
-            RoundPlaySectionHeader("Or a group")
+            // Flanking rules read as "either/or" between the two paths above and below, not as
+            // a third step between them.
+            HStack(spacing: 12) {
+                RoundPlayColors.fillSecondary.frame(height: 1)
+                Text("Or a group")
+                    .font(RoundPlayFont.archivo(17, .bold))
+                    .foregroundStyle(RoundPlayColors.accent)
+                    .fixedSize()
+                RoundPlayColors.fillSecondary.frame(height: 1)
+            }
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
 
-            VStack(spacing: 10) {
-                HStack(spacing: 10) {
-                    ForEach(topRow, id: \.self) { count in countCell(count) }
-                }
-                HStack(spacing: 10) {
-                    ForEach(bottomRow, id: \.self) { count in countCell(count) }
-                }
+            LazyVGrid(columns: columns, spacing: 10) {
+                ForEach(counts, id: \.self) { count in countCell(count) }
             }
             .listRowSeparator(.hidden)
             .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 16, trailing: 16))

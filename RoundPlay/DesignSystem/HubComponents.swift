@@ -104,12 +104,27 @@ struct RoundBuilderStepHeader: View {
     let totalSteps: Int
     let title: String
     var detail: String? = nil
+    /// Solo rounds hide the counter. Tapping "Just me" on *Step 2 of 6* and landing on *Step 3 of
+    /// 3* shows a total shrinking under the user — correct, but it reads as a glitch. The group
+    /// flow, whose total never changes mid-flight, keeps its counter.
+    var showsStepCount: Bool = true
+
+    private var eyebrow: String? {
+        switch (showsStepCount, detail) {
+        case (true, let detail?): "Step \(step) of \(totalSteps) · \(detail)"
+        case (true, nil): "Step \(step) of \(totalSteps)"
+        case (false, let detail?): detail
+        case (false, nil): nil
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(detail.map { "Step \(step) of \(totalSteps) · \($0)" } ?? "Step \(step) of \(totalSteps)")
-                .font(RoundPlayFont.archivo(15, .bold))
-                .foregroundStyle(RoundPlayColors.accent)
+            if let eyebrow {
+                Text(eyebrow)
+                    .font(RoundPlayFont.archivo(15, .bold))
+                    .foregroundStyle(RoundPlayColors.accent)
+            }
             RoundPlayTypography.largeTitle(title)
         }
         .listRowSeparator(.hidden)
