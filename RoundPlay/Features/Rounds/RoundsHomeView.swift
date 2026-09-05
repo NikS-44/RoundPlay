@@ -337,10 +337,26 @@ private struct InProgressRoundCard: View {
             .joined(separator: ", ")
     }
 
+    /// Money games only — Stroke Play settles to nothing, so counting it would put a "+$0.00" on
+    /// a round that has no money in it.
+    private var moneySettlements: [Settlement] {
+        EngineBridge.settlements(for: round, course: course).filter { $0.gameType != .strokePlay }
+    }
+
     private var net: Decimal {
         guard let scorekeeper = round.orderedSeats.first else { return 0 }
-        return EngineBridge.settlements(for: round, course: course)
-            .reduce(Decimal(0)) { $0 + $1.money(for: scorekeeper.playerID) }
+        return moneySettlements.reduce(Decimal(0)) { $0 + $1.money(for: scorekeeper.playerID) }
+    }
+
+    /// "4 players · Skins · thru 7", minus whatever doesn't apply. Built from the parts that
+    /// exist rather than interpolated with fixed separators — a round with no games was rendering
+    /// "1 player ·  · thru 6", with an orphaned dot where the game name would have gone.
+    private var subtitle: String {
+        [pluralized(round.orderedSeats.count, "player"),
+         gameNames.isEmpty ? nil : gameNames,
+         "thru \(holesPlayed)"]
+            .compactMap { $0 }
+            .joined(separator: " · ")
     }
 
     var body: some View {
@@ -349,14 +365,18 @@ private struct InProgressRoundCard: View {
                 RoundPlayTypography.eyebrow("In Progress")
                     .foregroundStyle(RoundPlayColors.pin)
                 Spacer()
-                RoundPlayTypography.money(net.formatted(.currency(code: "USD").sign(strategy: .always())))
-                    .foregroundStyle(net >= 0 ? RoundPlayColors.moneyPositiveOnBoard : RoundPlayColors.moneyNegativeOnBoard)
+                // No money games, no money line. A round that is just a scorecard has nothing to
+                // report here, and "+$0.00" reads as a result rather than as an absence.
+                if !moneySettlements.isEmpty {
+                    RoundPlayTypography.money(net.formatted(.currency(code: "USD").sign(strategy: .always())))
+                        .foregroundStyle(net >= 0 ? RoundPlayColors.moneyPositiveOnBoard : RoundPlayColors.moneyNegativeOnBoard)
+                }
             }
 
             RoundPlayTypography.title(round.courseName)
                 .foregroundStyle(RoundPlayColors.paperOnBoard)
 
-            Text("\(pluralized(round.orderedSeats.count, "player")) · \(gameNames) · thru \(holesPlayed)")
+            Text(subtitle)
                 .font(RoundPlayFont.archivo(13))
                 .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.6))
 

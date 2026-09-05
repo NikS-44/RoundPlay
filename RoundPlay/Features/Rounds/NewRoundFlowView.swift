@@ -162,135 +162,97 @@ private struct BestBallTeamsStep: View {
 
 // MARK: - Step 2a: how many
 
-/// One job: how many seats. Nothing else on the screen to look at.
+/// One job: how many seats, one through eight.
+///
+/// Solo is just the "1" cell, not a separate door — an eight-cell grid where one cell behaves
+/// differently from the other seven is harder to read than a grid where they're all the same
+/// kind of thing. What changes with the count is the caption underneath.
 private struct PlayerCountStep: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable var model: NewRoundModel
     let onSolo: () -> Void
     let onGroup: () -> Void
 
-    /// Three equal columns, so every cell is the same size whether its row holds three counts or
-    /// one — a fixed column count does that for free; splitting rows by hand (4 then 3) stretched
-    /// the shorter row's cells wider than the first row's.
-    private let counts = Array(2...8)
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 3)
+    /// Four columns, so eight counts fill exactly two rows with no ragged empty cell — three
+    /// columns left a gap where a ninth count would go. Equal flexible columns keep every cell the
+    /// same size for free.
+    private let counts = Array(1...8)
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 4)
 
     var body: some View {
-        // Same shape as every other step in the builder — list above, pinned action button below
-        // — so "how do I move on" never changes between screens. "Just me" is the one exception,
-        // and it looks like one: a card with a chevron reads as a door, not a value you pick.
+        // A plain stack rather than the List the other steps use. This step's content is fixed and
+        // short, so a List just pinned it to the top and left half the screen blank underneath;
+        // spacers above and below let the picker sit in the middle of the space it actually has,
+        // where a thumb already is.
         VStack(spacing: 0) {
-            RoundPlayList.plain {
-                stepContent
-            }
+            RoundBuilderStepHeader(
+                step: model.stepNumber(for: .playerCount),
+                totalSteps: model.totalSteps,
+                title: "How many players?"
+            )
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
 
-            RoundBuilderContinueButton(title: "Next") {
-                model.commitGroupCount()
-                onGroup()
-            }
-        }
-        .sensoryFeedback(RoundPlayHaptics.selection, trigger: model.selectedGroupCount)
-        .navigationTitle("Players")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-
-    @ViewBuilder
-    private var stepContent: some View {
-        RoundBuilderStepHeader(
-            step: model.stepNumber(for: .playerCount),
-            totalSteps: model.totalSteps,
-            title: "How many players?"
-        )
-
-        Button {
-            model.makeSolo(in: modelContext)
-            onSolo()
-        } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "figure.golf")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(RoundPlayColors.paperOnBoard)
-                        .frame(width: 38, height: 38)
-                        .background(Circle().fill(RoundPlayColors.accent))
-                    VStack(alignment: .leading, spacing: 1) {
-                        RoundPlayTypography.headline("Just me")
-                        RoundPlayTypography.caption("Solo round · no games")
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(RoundPlayColors.accent)
-                }
-                .padding(16)
-                .frame(maxWidth: .infinity)
-                .background(
-                    RoundedRectangle(cornerRadius: 15, style: .continuous)
-                        .fill(RoundPlayColors.accent.opacity(0.10))
-                        .strokeBorder(RoundPlayColors.accent.opacity(0.42), lineWidth: 1.5)
-                )
-            }
-            .buttonStyle(.plain)
-            .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 14, trailing: 16))
-
-            // Flanking rules read as "either/or" between the two paths above and below, not as
-            // a third step between them.
-            HStack(spacing: 12) {
-                RoundPlayColors.fillSecondary.frame(height: 1)
-                Text("Or a group")
-                    .font(RoundPlayFont.archivo(17, .bold))
-                    .foregroundStyle(RoundPlayColors.accent)
-                    .fixedSize()
-                RoundPlayColors.fillSecondary.frame(height: 1)
-            }
-            .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
+            // A fixed gap, not a spacer. Splitting the free space evenly above and below floated
+            // the picker into the middle of the screen, a long way from the question it answers.
+            // The slack belongs below the content, where the Next button already anchors it.
+            Spacer().frame(height: 28)
 
             LazyVGrid(columns: columns, spacing: 10) {
                 ForEach(counts, id: \.self) { count in countCell(count) }
             }
-            .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 16))
+            .padding(.horizontal, 16)
 
-            // Group size decides which games exist — a foursome can play seven, a sixsome three —
-            // and without this you don't find that out until the games step, five screens later.
-            RoundPlayTypography.caption(gamesSummary)
+            // Player count decides which games exist — a foursome can play seven, a sixsome three
+            // — and without this you don't find that out until the games step, five screens later.
+            RoundPlayTypography.caption(countSummary)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity)
-                .animation(.easeOut(duration: 0.15), value: model.selectedGroupCount)
-                .listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 16, trailing: 16))
+                .padding(.horizontal, 16)
+                .padding(.top, 14)
+                .animation(.easeOut(duration: 0.15), value: model.selectedPlayerCount)
+
+            Spacer(minLength: 16)
+
+            RoundBuilderContinueButton(title: "Next", action: commit)
+        }
+        .sensoryFeedback(RoundPlayHaptics.selection, trigger: model.selectedPlayerCount)
+        .navigationTitle("Players")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
-    /// "3 games — Stroke Play, Skins and Stableford" when the whole list fits, otherwise a count
-    /// plus the size-specific ones. Naming Stroke Play, Skins and Stableford in the long case
-    /// would waste the line: they're available at every size, so they're never what a count costs
-    /// you.
-    private var gamesSummary: String {
-        let games = model.eligibleGames(forPlayerCount: model.selectedGroupCount)
-        let names = games.map(\.displayName)
-        guard names.count > 4 else {
-            return "\(names.count) games — \(names.formatted(.list(type: .and)))"
+    /// One seat skips straight to the holes step: the four screens in between exist to sort out
+    /// who else is playing and who is giving whom shots, and alone there is nobody to sort out.
+    private func commit() {
+        if model.selectedPlayerCount == 1 {
+            model.makeSolo(in: modelContext)
+            onSolo()
+        } else {
+            model.commitPlayerCount()
+            onGroup()
         }
-        let sizeSpecific = games
-            .filter { !($0.playerRange.lowerBound <= 2 && $0.playerRange.upperBound >= 8) }
-            .prefix(3)
-            .map(\.displayName)
-        return "\(names.count) games, including \(sizeSpecific.formatted(.list(type: .and)))"
+    }
+
+    /// Every game the count allows, named in full and left to wrap — the point is to spot whether
+    /// the one your group plays survives this many players, which a truncated list can't answer.
+    private var countSummary: String {
+        guard model.selectedPlayerCount > 1 else { return "Solo round, no games" }
+        let names = model.eligibleGames(forPlayerCount: model.selectedPlayerCount).map(\.displayName)
+        return "\(names.count) games: \(names.joined(separator: ", "))"
     }
 
     /// Selecting a size, not navigating on it — the same accent fill and border every other
     /// choice in the builder uses to say "this is the one you picked".
     private func countCell(_ count: Int) -> some View {
-        let isSelected = model.selectedGroupCount == count
+        let isSelected = model.selectedPlayerCount == count
         return Button {
-            model.selectedGroupCount = count
+            model.selectedPlayerCount = count
         } label: {
             Text("\(count)")
                 .font(RoundPlayFont.archivo(27, .bold))
-                .frame(maxWidth: .infinity, minHeight: 64)
+                .frame(maxWidth: .infinity, minHeight: 100)
                 .background(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .fill(isSelected ? RoundPlayColors.accent.opacity(0.12) : RoundPlayColors.fillSecondary)
@@ -302,7 +264,7 @@ private struct PlayerCountStep: View {
                 .foregroundStyle(isSelected ? RoundPlayColors.accent : Color.primary)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(count) players")
+        .accessibilityLabel(count == 1 ? "1 player, solo round" : "\(count) players")
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 }

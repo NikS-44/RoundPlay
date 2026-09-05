@@ -130,24 +130,21 @@ final class NewRoundModel {
         isSolo ? HandicapSettings(mode: .full, allowancePercent: 100, maxStrokes: nil) : handicapSettings
     }
 
-    /// The group size showing as selected on the players step. Starts at four — the default
-    /// foursome, and what most rounds actually are — so the step arrives with a sensible choice
-    /// already made instead of an inert Next button.
-    var selectedGroupCount: Int = 4
+    /// The count showing as selected on the players step. Starts at four — the default foursome,
+    /// and what most rounds actually are — so the step arrives with a sensible choice already made
+    /// instead of an inert Next button.
+    var selectedPlayerCount: Int = 4
 
-    /// Applies the selected group size to the round being built.
+    /// Applies the selected count to the round being built.
     ///
-    /// Called when the step is committed, not on every tap. Tapping a size only moves the
-    /// highlight; a detour through "Just me" and back would otherwise leave `playerCount` at one
-    /// while the grid still showed four selected, and Next would carry that mismatch forward.
-    func commitGroupCount() {
-        playerCount = selectedGroupCount
+    /// Called when the step is committed, not on every tap. Tapping a count only moves the
+    /// highlight; committing on tap would leave `playerCount` following every stray tap on the way
+    /// to the one the user meant.
+    func commitPlayerCount() {
+        playerCount = selectedPlayerCount
     }
 
     /// Collapses the builder to a single seat holding the player recorded at onboarding.
-    ///
-    /// Deliberately leaves `selectedGroupCount` alone: coming back to the step should show the
-    /// same preselected size it opened with, and `commitGroupCount` re-applies it on the way out.
     func makeSolo(in context: ModelContext, defaults: UserDefaults = .standard) {
         playerCount = 1
         seats[0].assign(to: MyPlayer.resolve(in: context, defaults: defaults))

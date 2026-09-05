@@ -15,6 +15,14 @@ struct RoundPlayApp: App {
                 .celebrationOverlay()
                 .environment(RoundSyncSession.shared)
                 .onAppear {
+                    #if DEBUG
+                    // Screenshot seeding, debug builds only and only when asked for by launch
+                    // argument. `DemoData` is itself entirely inside `#if DEBUG`, so nothing here
+                    // exists in an App Store archive.
+                    if DemoData.isRequested {
+                        DemoData.seed(into: sharedModelContainer.mainContext)
+                    }
+                    #endif
                     RoundSyncSession.shared.activate(context: sharedModelContainer.mainContext)
                 }
                 .onChange(of: scenePhase) { _, phase in
