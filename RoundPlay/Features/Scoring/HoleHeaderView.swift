@@ -7,17 +7,22 @@ import SwiftUI
 struct HoleHeader: View {
     let par: Int
     let strokeIndex: Int
-    /// The solo round's running score — "+3 / THRU 6". Takes the middle of the board, where a
+    /// The solo round's running score — "E", "THRU 3". Takes the middle of the board, where a
     /// group round shows its leader or Wolf line; the two never coexist, because a solo round has
     /// no leader to name and no Wolf to declare.
-    var centerLine: (value: String, caption: String)? = nil
+    var centerLine: (value: String, thru: Int)? = nil
     let leaderLine: String?
     let wolfLine: String?
     let onTapWolf: () -> Void
 
     var body: some View {
         VStack(spacing: 10) {
-            HStack(alignment: .top) {
+            // Three equal-width columns, not two `Spacer()`s either side of the middle content.
+            // "Handicap" is a much wider label than "Par", so a pair of equal spacers centers the
+            // middle block between the *edges* of those two side blocks rather than in the row's
+            // true center — which then sits visibly off from "Hole X" centered above it in the nav
+            // bar. Three columns of exactly a third each can't drift with label width.
+            HStack(alignment: .top, spacing: 0) {
                 VStack(alignment: .leading, spacing: 2) {
                     RoundPlayTypography.eyebrow("Par")
                         .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.6))
@@ -27,45 +32,10 @@ struct HoleHeader: View {
                         .foregroundStyle(RoundPlayColors.paperOnBoard)
                         .contentTransition(.numericText())
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                Spacer()
-
-                if let centerLine {
-                    VStack(spacing: 2) {
-                        RoundPlayTypography.eyebrow(centerLine.caption)
-                            .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.55))
-                        Text(centerLine.value)
-                            .font(RoundPlayFont.archivo(31, .black))
-                            .tracking(-1.5)
-                            .foregroundStyle(RoundPlayColors.paperOnBoard)
-                            .contentTransition(.numericText())
-                    }
-                    Spacer()
-                } else if let wolfLine {
-                    Button(action: onTapWolf) {
-                        HStack(spacing: 4) {
-                            Text(wolfLine)
-                                .font(RoundPlayFont.archivo(15, .semiBold))
-                                .multilineTextAlignment(.center)
-                            Image(systemName: "pencil")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.6))
-                        }
-                        .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.85))
-                        .frame(maxWidth: 130)
-                        .padding(.top, 8)
-                    }
-                    .buttonStyle(.plain)
-                    Spacer()
-                } else if let leaderLine {
-                    Text(leaderLine)
-                        .font(RoundPlayFont.archivo(15, .semiBold))
-                        .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.85))
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: 120)
-                        .padding(.top, 8)
-                    Spacer()
-                }
+                centerColumn
+                    .frame(maxWidth: .infinity, alignment: .center)
 
                 VStack(alignment: .trailing, spacing: 2) {
                     RoundPlayTypography.eyebrow("Handicap")
@@ -76,10 +46,55 @@ struct HoleHeader: View {
                         .foregroundStyle(RoundPlayColors.paperOnBoard)
                         .contentTransition(.numericText())
                 }
+                .frame(maxWidth: .infinity, alignment: .trailing)
             }
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 12)
         .background(RoundPlayColors.board)
+    }
+
+    @ViewBuilder
+    private var centerColumn: some View {
+        if let centerLine {
+            VStack(spacing: 2) {
+                RoundPlayTypography.eyebrow("Score")
+                    .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.55))
+                Text(centerLine.value)
+                    .font(RoundPlayFont.archivo(31, .black))
+                    .tracking(-1.5)
+                    .foregroundStyle(RoundPlayColors.paperOnBoard)
+                    .contentTransition(.numericText())
+                // Demoted under the score itself, the way a broadcast leaderboard shows "THRU 3"
+                // small beneath the big number — supporting detail, not the headline.
+                Text("Thru \(centerLine.thru)")
+                    .font(RoundPlayFont.archivo(10, .semiBold))
+                    .tracking(0.4)
+                    .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.5))
+                    .contentTransition(.numericText())
+            }
+        } else if let wolfLine {
+            Button(action: onTapWolf) {
+                HStack(spacing: 4) {
+                    Text(wolfLine)
+                        .font(RoundPlayFont.archivo(15, .semiBold))
+                        .multilineTextAlignment(.center)
+                    Image(systemName: "pencil")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.6))
+                }
+                .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.85))
+                .frame(maxWidth: 130)
+                .padding(.top, 8)
+            }
+            .buttonStyle(.plain)
+        } else if let leaderLine {
+            Text(leaderLine)
+                .font(RoundPlayFont.archivo(15, .semiBold))
+                .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.85))
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 120)
+                .padding(.top, 8)
+        }
     }
 }

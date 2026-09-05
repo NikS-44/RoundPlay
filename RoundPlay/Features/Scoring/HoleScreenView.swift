@@ -146,14 +146,14 @@ struct HoleScreenView: View {
 
     /// The solo round's running score for the board's centre slot. Gross, not net: the number you
     /// glance at while playing should be the number on the card.
-    private var runningScoreLine: (value: String, caption: String)? {
+    private var runningScoreLine: (value: String, thru: Int)? {
         guard round.isSolo, let seat = round.orderedSeats.first else { return nil }
         let played = RelativeToPar.holesPlayed(state: state, playerID: seat.playerID, holes: holeRange)
         guard played > 0 else { return nil }
         let versusPar = RelativeToPar.grossVersusPar(
             state: state, course: course, playerID: seat.playerID, holes: holeRange
         )
-        return (RelativeToPar.label(versusPar), "Thru \(played)")
+        return (RelativeToPar.label(versusPar), played)
     }
 
     var body: some View {
