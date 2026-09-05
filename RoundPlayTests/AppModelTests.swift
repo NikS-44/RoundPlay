@@ -80,13 +80,42 @@ func newRoundDraftRules() {
     let model = NewRoundModel()
     #expect(model.playerCount == 4)
     model.playerCount = 1
-    #expect(model.playerCount == 2)
+    #expect(model.playerCount == 1)
+    model.playerCount = 0
+    #expect(model.playerCount == 1)
     model.playerCount = 99
     #expect(model.playerCount == 8)
     model.playerCount = 3
     #expect(model.eligibleGames.contains { $0.gameType == .nines })
     #expect(!model.eligibleGames.contains { $0.gameType == .nassau })
     #expect(!model.canStart)
+}
+
+@Test("A round is solo when it has exactly one seat")
+func roundIsSoloWithOneSeat() {
+    let round = RoundRecord(courseID: testCourseID, courseName: "Test Links")
+    #expect(!round.isSolo)
+
+    round.seats = [SeatRecord(playerID: UUID(), name: "Me", courseHandicap: 12, position: 0)]
+    #expect(round.isSolo)
+
+    round.seats?.append(SeatRecord(playerID: UUID(), name: "Ann", courseHandicap: 8, position: 1))
+    #expect(!round.isSolo)
+}
+
+@Test("Player count accepts one player and still refuses zero and nine")
+func playerCountAllowsSolo() {
+    let model = NewRoundModel()
+    #expect(model.seats.count == 4)
+
+    model.playerCount = 1
+    #expect(model.seats.count == 1)
+
+    model.playerCount = 0
+    #expect(model.seats.count == 1)
+
+    model.playerCount = 9
+    #expect(model.seats.count == 8)
 }
 
 @Test("Guest nickname selection avoids every available collision")

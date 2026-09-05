@@ -205,7 +205,7 @@ final class NewRoundModel {
     var playerCount: Int {
         get { seats.count }
         set {
-            let count = max(2, min(8, newValue))
+            let count = max(1, min(8, newValue))
             if count < seats.count {
                 seats.removeLast(seats.count - count)
             } else if count > seats.count {

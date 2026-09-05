@@ -34,6 +34,13 @@ public final class RoundRecord {
     public var isComplete: Bool { completedAt != nil }
     public var isDeleted: Bool { deletedAt != nil }
 
+    /// A round with a single seat.
+    ///
+    /// Solo is a shape, not a stored mode: nothing in the schema records it, so a solo round
+    /// syncs and merges exactly like any other. One seat has exactly one meaning — the builder
+    /// only reaches it when someone deliberately taps "Just me".
+    public var isSolo: Bool { orderedSeats.count == 1 }
+
     public var holeSegment: RoundSegment {
         RoundSegment(rawValue: holesPlayedRaw) ?? .total
     }
