@@ -42,6 +42,16 @@ public final class RoundSyncSession: NSObject, WCSessionDelegate, @unchecked Sen
     }
 
     public func pushAll() {
+        // Building the snapshots reads `context`, and `ModelContext` is not thread-safe. Every
+        // delegate callback below already hops to main before touching it, but this one is reached
+        // a different way: `EngineBridge.onLocalChange` fires it synchronously on whatever thread
+        // recorded the score. In the app that is always the main actor, so it never bit a user —
+        // but it corrupted the heap the moment anything recorded scores off-main, which is exactly
+        // what the parallel test suite does.
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in self?.pushAll() }
+            return
+        }
         guard let context else { return }
         guard WCSession.isSupported() else { return }
         let session = WCSession.default
