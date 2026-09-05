@@ -176,18 +176,37 @@ private struct PlayerCountStep: View {
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 3)
 
     var body: some View {
-        RoundPlayList.plain {
-            RoundBuilderStepHeader(
-                step: model.stepNumber(for: .playerCount),
-                totalSteps: model.totalSteps,
-                title: "How many players?",
-                detail: "Tap to continue"
-            )
+        // Same shape as every other step in the builder — list above, pinned action button below
+        // — so "how do I move on" never changes between screens. "Just me" is the one exception,
+        // and it looks like one: a card with a chevron reads as a door, not a value you pick.
+        VStack(spacing: 0) {
+            RoundPlayList.plain {
+                stepContent
+            }
 
-            Button {
-                model.makeSolo(in: modelContext)
-                onSolo()
-            } label: {
+            RoundBuilderContinueButton(
+                title: "Next",
+                isEnabled: model.selectedGroupCount != nil,
+                action: onGroup
+            )
+        }
+        .sensoryFeedback(RoundPlayHaptics.selection, trigger: model.selectedGroupCount)
+        .navigationTitle("Players")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    @ViewBuilder
+    private var stepContent: some View {
+        RoundBuilderStepHeader(
+            step: model.stepNumber(for: .playerCount),
+            totalSteps: model.totalSteps,
+            title: "How many players?"
+        )
+
+        Button {
+            model.makeSolo(in: modelContext)
+            onSolo()
+        } label: {
                 HStack(spacing: 12) {
                     Image(systemName: "figure.golf")
                         .font(.system(size: 17, weight: .semibold))
@@ -234,27 +253,31 @@ private struct PlayerCountStep: View {
             }
             .listRowSeparator(.hidden)
             .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 16, trailing: 16))
-        }
-        .navigationTitle("Players")
-        .navigationBarTitleDisplayMode(.inline)
     }
 
+    /// Selecting a size, not navigating on it — the same accent fill and border every other
+    /// choice in the builder uses to say "this is the one you picked".
     private func countCell(_ count: Int) -> some View {
-        Button {
-            model.playerCount = count
-            onGroup()
+        let isSelected = model.selectedGroupCount == count
+        return Button {
+            model.chooseGroupCount(count)
         } label: {
             Text("\(count)")
                 .font(RoundPlayFont.archivo(27, .bold))
                 .frame(maxWidth: .infinity, minHeight: 64)
                 .background(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(RoundPlayColors.fillSecondary)
+                        .fill(isSelected ? RoundPlayColors.accent.opacity(0.12) : RoundPlayColors.fillSecondary)
                 )
-                .foregroundStyle(Color.primary)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(isSelected ? RoundPlayColors.accent : Color.clear, lineWidth: 2)
+                )
+                .foregroundStyle(isSelected ? RoundPlayColors.accent : Color.primary)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(count) players")
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 }
 

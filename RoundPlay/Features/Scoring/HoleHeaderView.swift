@@ -57,20 +57,18 @@ struct HoleHeader: View {
     @ViewBuilder
     private var centerColumn: some View {
         if let centerLine {
+            // Exactly two lines, at exactly the sizes Par and Handicap use — "Thru 3" carries the
+            // hole count in the label line rather than adding a third line under the score. A
+            // taller centre column grew the whole board the moment the first score landed, which
+            // shoved the scoring grid down the screen mid-round.
             VStack(spacing: 2) {
-                RoundPlayTypography.eyebrow("Score")
+                RoundPlayTypography.eyebrow("Thru \(centerLine.thru)")
                     .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.55))
-                Text(centerLine.value)
-                    .font(RoundPlayFont.archivo(31, .black))
-                    .tracking(-1.5)
-                    .foregroundStyle(RoundPlayColors.paperOnBoard)
                     .contentTransition(.numericText())
-                // Demoted under the score itself, the way a broadcast leaderboard shows "THRU 3"
-                // small beneath the big number — supporting detail, not the headline.
-                Text("Thru \(centerLine.thru)")
-                    .font(RoundPlayFont.archivo(10, .semiBold))
-                    .tracking(0.4)
-                    .foregroundStyle(RoundPlayColors.paperOnBoard.opacity(0.5))
+                Text(centerLine.value)
+                    .font(RoundPlayFont.archivo(36, .black))
+                    .tracking(-1.8)
+                    .foregroundStyle(RoundPlayColors.paperOnBoard)
                     .contentTransition(.numericText())
             }
         } else if let wolfLine {

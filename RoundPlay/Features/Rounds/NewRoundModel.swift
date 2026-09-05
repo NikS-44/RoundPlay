@@ -130,9 +130,25 @@ final class NewRoundModel {
         isSolo ? HandicapSettings(mode: .full, allowancePercent: 100, maxStrokes: nil) : handicapSettings
     }
 
+    /// The group size the user has actually tapped, or `nil` if they haven't chosen one yet.
+    ///
+    /// Distinct from `playerCount`, which is never empty — it starts at 4, so it can't tell "the
+    /// user picked four" from "nobody has picked anything." The players step needs that difference
+    /// to keep Next disabled until a real choice is made. Solo clears it: picking "Just me" is not
+    /// picking a group size, so coming back to the step must not leave Next armed for a size the
+    /// user never chose.
+    var selectedGroupCount: Int?
+
+    /// Records a deliberate group-size choice.
+    func chooseGroupCount(_ count: Int) {
+        playerCount = count
+        selectedGroupCount = count
+    }
+
     /// Collapses the builder to a single seat holding the player recorded at onboarding.
     func makeSolo(in context: ModelContext, defaults: UserDefaults = .standard) {
         playerCount = 1
+        selectedGroupCount = nil
         seats[0].assign(to: MyPlayer.resolve(in: context, defaults: defaults))
     }
 
