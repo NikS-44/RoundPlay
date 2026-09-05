@@ -379,3 +379,12 @@ func soloHistoryLine() throws {
     let unchanged = SoloRoundHistory.line(for: current, course: engineCourse, playerID: playerID, in: context)
     #expect(unchanged == compared)
 }
+
+@Test("The solo celebration word keys off score, not money")
+func soloCompletionWord() {
+    #expect(SoloCompletion.word(versusPar: -3) == "FIRED")
+    #expect(SoloCompletion.word(versusPar: 0) == "LEVEL")
+    #expect(SoloCompletion.word(versusPar: 1) == "SOLID")
+    #expect(SoloCompletion.word(versusPar: 9) == "SOLID")
+    #expect(SoloCompletion.word(versusPar: 10) == "WRAPPED")
+}

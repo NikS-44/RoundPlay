@@ -66,6 +66,19 @@ struct RoundSummaryView: View {
     }
 
     var body: some View {
+        if round.isSolo {
+            SoloSummaryView(
+                round: round,
+                course: course,
+                onShare: onShare,
+                onShowScorecard: onShowScorecard
+            )
+        } else {
+            groupBody
+        }
+    }
+
+    private var groupBody: some View {
         RoundPlayList.plain {
             heroCard
 
@@ -240,7 +253,7 @@ struct RoundSummaryView: View {
 /// A capsule CTA sized to sit next to its sibling — "Share" filled solid, "Settle Up" a crisp
 /// outline instead of the system `.bordered` style's washed-out translucent fill, so the pair
 /// reads as one deliberate two-button group instead of two mismatched controls.
-private struct SummaryActionButton: View {
+struct SummaryActionButton: View {
     let title: String
     let systemImage: String
     let isFilled: Bool

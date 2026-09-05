@@ -315,11 +315,18 @@ struct HoleScreenView: View {
         onFinished()
     }
 
-    /// The word the fireworks land on. Keyed to the scorekeeper's own result because that's whose
-    /// phone this is — a round where you took money off your friends shouldn't read the same as
-    /// one where you paid out. One short word: the overlay renders it at 68pt.
+    /// The word the fireworks land on. A group round keys it to the scorekeeper's own result —
+    /// taking money off your friends shouldn't read the same as paying out. A solo round has no
+    /// money, so it keys to the score instead. One short word: the overlay renders it at 68pt.
     private var completionWord: String {
         guard let scorekeeper else { return "WRAPPED" }
+        if round.isSolo {
+            return SoloCompletion.word(
+                versusPar: RelativeToPar.grossVersusPar(
+                    state: state, course: course, playerID: scorekeeper.playerID, holes: holeRange
+                )
+            )
+        }
         let net = EngineBridge.settlements(for: round, course: course)
             .filter { $0.gameType != .strokePlay }
             .reduce(Decimal(0)) { $0 + $1.money(for: scorekeeper.playerID) }

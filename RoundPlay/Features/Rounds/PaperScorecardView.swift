@@ -80,6 +80,17 @@ enum RoundShareContent {
     }
 
     static func settlementSummaryText(round: RoundRecord, course: Course) -> String {
+        // A solo round has no settlement to summarise — the score is the whole story.
+        if round.isSolo, let seat = round.orderedSeats.first {
+            let state = EngineBridge.roundState(for: round, course: course)
+            let holes = round.holeSegment.holeRange
+            let gross = holes.reduce(0) { $0 + (state.gross(hole: $1, player: seat.playerID) ?? 0) }
+            let versusPar = RelativeToPar.grossVersusPar(
+                state: state, course: course, playerID: seat.playerID, holes: holes
+            )
+            return "\(round.courseName) — \(gross) (\(RelativeToPar.label(versusPar)))"
+        }
+
         let settlements = EngineBridge.settlements(for: round, course: course)
         guard !settlements.isEmpty else {
             return "\(round.courseName): no games played, nothing owed."
