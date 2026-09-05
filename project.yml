@@ -49,7 +49,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.roundplay.RoundPlay
-        MARKETING_VERSION: "0.1.0"
+        MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "6.2"
         GENERATE_INFOPLIST_FILE: YES
@@ -59,6 +59,10 @@ targets:
         ENABLE_USER_SCRIPT_SANDBOXING: YES
         DEVELOPMENT_TEAM: XVD9C7XLM5
         CODE_SIGN_STYLE: Automatic
+        # iPhone only. The layouts are portrait-first and phone-width; on a 13" iPad they
+        # stretch edge to edge with phone-sized type and a third of the screen empty. iPad
+        # ships when it has a layout of its own, not as a scaled-up phone.
+        TARGETED_DEVICE_FAMILY: 1
   RoundPlayWatch:
     type: application
     platform: watchOS
@@ -80,7 +84,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.roundplay.RoundPlay.watchkitapp
-        MARKETING_VERSION: "0.1.0"
+        MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "6.2"
         GENERATE_INFOPLIST_FILE: YES
