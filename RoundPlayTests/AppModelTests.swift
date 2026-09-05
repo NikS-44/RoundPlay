@@ -260,3 +260,62 @@ func runningScoreIgnoresUnplayedHoles() throws {
     #expect(RelativeToPar.label(0) == "E")
     #expect(RelativeToPar.label(-3) == "-3")
 }
+
+@Test("Round shape counts scores against par and finds the best and worst holes")
+func roundShapeCounts() throws {
+    let context = try inMemoryContext()
+    let course = validCourseRecord()   // 18 holes, all par 4, stroke indexes 1...18
+    context.insert(course)
+    let engineCourse = try #require(course.engineCourse)
+
+    let round = RoundRecord(courseID: testCourseID, courseName: "Test Links")
+    let seat = SeatRecord(playerID: UUID(), name: "Me", courseHandicap: 0, position: 0)
+    round.seats = [seat]
+    context.insert(round)
+
+    // hole 1 eagle (2), hole 2 birdie (3), holes 3-4 par (4), hole 5 bogey (5),
+    // hole 6 double (6), hole 7 triple (7).
+    for (hole, strokes) in [(1, 2), (2, 3), (3, 4), (4, 4), (5, 5), (6, 6), (7, 7)] {
+        try EngineBridge.appendStrokes(
+            strokes, hole: hole, playerID: seat.playerID, to: round,
+            enteredBy: seat.playerID, enteredByName: seat.name, in: context
+        )
+    }
+
+    let state = EngineBridge.roundState(for: round, course: engineCourse)
+    let shape = RoundShape.of(state: state, course: engineCourse,
+                              playerID: seat.playerID, holes: round.holeSegment.holeRange)
+
+    #expect(shape.eaglesOrBetter == 1)
+    #expect(shape.birdies == 1)
+    #expect(shape.pars == 2)
+    #expect(shape.bogeys == 1)
+    #expect(shape.doubles == 1)
+    #expect(shape.worse == 1)
+    #expect(shape.best?.hole == 1)
+    #expect(shape.best?.versusPar == -2)
+    #expect(shape.worst?.hole == 7)
+    #expect(shape.worst?.versusPar == 3)
+    // Only non-zero rows are shown, so an all-par round doesn't list five empty lines.
+    #expect(shape.counts.map(\.label) == ["Eagles", "Birdies", "Pars", "Bogeys", "Doubles", "Worse"])
+}
+
+@Test("A round with no scores has no shape to report")
+func roundShapeEmpty() throws {
+    let context = try inMemoryContext()
+    let course = validCourseRecord()
+    context.insert(course)
+    let engineCourse = try #require(course.engineCourse)
+
+    let round = RoundRecord(courseID: testCourseID, courseName: "Test Links")
+    let seat = SeatRecord(playerID: UUID(), name: "Me", courseHandicap: 0, position: 0)
+    round.seats = [seat]
+    context.insert(round)
+
+    let state = EngineBridge.roundState(for: round, course: engineCourse)
+    let shape = RoundShape.of(state: state, course: engineCourse,
+                              playerID: seat.playerID, holes: round.holeSegment.holeRange)
+    #expect(shape.best == nil)
+    #expect(shape.worst == nil)
+    #expect(shape.counts.isEmpty)
+}
