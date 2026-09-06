@@ -237,6 +237,18 @@ then still writes the frame in portrait, with the landscape content lying on its
 with `sips -r 90 05-scorecard.png` to stand it up. The result is a true 2868 × 1320 capture, not an
 upscale.
 
+There are two sets, because App Store Connect's slots are per display size and only accept exact
+geometries:
+
+- `screenshots/` — **6.9"**, 1320 × 2868, captured on iPhone 17 Pro Max.
+- `screenshots/iphone-6.5/` — **6.5"**, 1284 × 2778, captured on iPhone 14 Plus.
+
+Note that no current iPhone can produce a 6.5" screenshot; that slot accepts only 1242 × 2688
+(iPhone 11 Pro Max / XS Max) or 1284 × 2778 (iPhone 12/13 Pro Max, 14 Plus). Every device since is
+a different geometry — 16 Pro is 1206 × 2622, 16/17 Pro Max is 1320 × 2868. iPhone 14 Plus is the
+newest device that fits, which is why the 6.5" set was shot on one. Uploading the 6.9" files into
+the 6.5" slot is rejected outright; each set goes in its own slot.
+
 ### iPhone 6.9" — 1320 × 2868 (required)
 
 | Order | File | Shows |
@@ -246,6 +258,11 @@ upscale.
 | 3 | `03-games.png` | The games library with player counts and plain-English rules |
 | 4 | `04-courses.png` | Course picker, sorted by distance, with the offline database |
 | 5 | `05-scorecard.png` | Full landscape scorecard, 2868 × 1320 — **DECIDE**: this is the only landscape shot. It's the app's signature view, but a single landscape image in an otherwise portrait gallery looks inconsistent. Include it or drop it |
+
+### iPhone 6.5" — 1284 × 2778
+
+The same five screens, same order, same demo round, captured on iPhone 14 Plus in
+`screenshots/iphone-6.5/`.
 
 ### Apple Watch — 422 × 514 (required, since the watch app ships)
 
