@@ -229,6 +229,11 @@ network requests at all; the course database ships inside the binary.
 Captured at exact required sizes from `docs/app-store/screenshots/`. Plain device captures, no
 framing. Apple auto-scales the 6.9" set to smaller iPhones, so no other iPhone size is needed.
 
+Screenshots 1–4 recaptured on 2026-09-06. Screenshot 5 is from 2026-09-05 and still accurate —
+nothing on the phone changed in between — but it could not be retaken, because it needs the
+simulator rotated to landscape and neither `simctl` nor the simulator-control tooling can rotate a
+device. To refresh it: rotate the simulator (Cmd+Left Arrow) on the Scorecard tab and capture.
+
 ### iPhone 6.9" — 1320 × 2868 (required)
 
 | Order | File | Shows |
