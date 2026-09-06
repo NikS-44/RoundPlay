@@ -241,13 +241,21 @@ framing. Apple auto-scales the 6.9" set to smaller iPhones, so no other iPhone s
 
 ### Apple Watch — 422 × 514 (required, since the watch app ships)
 
+Captured on Apple Watch Ultra 3, which renders at exactly the required size.
+
 | Order | File | Shows |
 |---|---|---|
-| 1 | `watch/w01-hole-entry.png` | Entering a score on the wrist |
+| 1 | `watch/w01-hole-entry.png` | The hole screen — every player on one card, each with their own score strip, par marked on the scale |
+| 2 | `watch/w02-standings.png` | Live standings against par, mid-round |
 
-Apple requires only one; more can be added. I could only capture one reliably — the tooling
-wouldn't send input to the watch simulator, so the scorecard and standings views aren't captured.
-Worth adding by hand if you want a fuller watch story.
+Apple requires only one, so this is sufficient. Two views are still uncaptured: the scorecard page
+and the end-of-round review. The watch simulator's page swipe stops responding after a couple of
+transitions, so neither could be reached — this is simulator input flakiness, not an app problem;
+both work when driven by hand. Worth grabbing on a real watch if you want a fuller story, since the
+review screen is where the round gets finished.
+
+**Both files were recaptured on 2026-09-06** and show the rebuilt hole screen. Any older copy shows
+UI that no longer exists.
 
 ---
 
@@ -270,7 +278,7 @@ xcodebuild test -project RoundPlay.xcodeproj -scheme RoundPlay \
 cd Packages/RoundPlayEngine && swift test
 ```
 
-Currently 19 app tests and 116 engine tests, all passing.
+Currently 19 app tests, 116 engine tests and 6 data tests, all passing.
 
 ---
 
@@ -294,3 +302,6 @@ Currently 19 app tests and 116 engine tests, all passing.
   phone-sized type and a third of the screen empty. iPad ships when it has a layout of its own.
 - **Solo mode on the watch.** The watch app keeps its own quick-start flow and doesn't know about
   solo rounds.
+- **Starting a round on a watch with no phone data.** The watch can start a round on its own, and
+  can repeat the last one with the same group, but it can only use courses and players already
+  synced from the phone — with an empty store it says "No courses yet. Add one on your phone."
