@@ -22,9 +22,14 @@ struct WatchRootView: View {
                     WatchQuickStartView()
                 }
             }
+            // The sync glyph used to sit in the bar's leading slot. The hole screen needs that
+            // slot for its own back/forward arrows, and a connectivity dot is worth less on the
+            // scoring screen than the two controls used on every hole.
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    SyncStatusGlyph(state: sync.connectionState)
+                    if activeRound == nil {
+                        SyncStatusGlyph(state: sync.connectionState)
+                    }
                 }
             }
         }
@@ -38,14 +43,15 @@ struct WatchRoundPager: View {
     var body: some View {
         TabView {
             WatchHoleEntryView(round: round, course: course)
-                .tabItem { Text("Hole") }
             WatchStandingsView(round: round, course: course)
-                .tabItem { Text("Stand") }
             WatchScorecardView(round: round, course: course)
-                .tabItem { Text("Card") }
         }
         .tabViewStyle(.verticalPage)
-        .navigationTitle(round.courseName)
-        .navigationBarTitleDisplayMode(.inline)
+        // No title: the course name used to live here and was drawn over the top of the hole
+        // screen's own header — "Pebble Creek" landing on "1 of 1" — and once you've teed off you
+        // already know what course you're standing on.
+        //
+        // No tab labels either. They never rendered as text in a vertical pager, but the pages
+        // reserved a header line for them, which was the empty band above the hole number.
     }
 }

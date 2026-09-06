@@ -107,11 +107,13 @@ func auditLogOrdering() throws {
 
 @Test("Hole entry sequence inserts wolf and BBB around scores")
 func holeEntrySequence() {
-    let steps = HoleEntrySequence.steps(
-        requiredInputs: [.partnerChoice, .strokes, .holeEvents],
-        seatCount: 2
-    )
-    #expect(steps == [.partnerChoice, .score(seatIndex: 0), .score(seatIndex: 1), .holeEvents])
+    let steps = HoleEntrySequence.steps(requiredInputs: [.partnerChoice, .strokes, .holeEvents])
+    #expect(steps == [.partnerChoice, .scores, .holeEvents])
+
+    // Scores are one step regardless of how many players are on the card.
+    #expect(HoleEntrySequence.steps(requiredInputs: [.strokes]) == [.scores])
+    // Wolf declares before anyone is scored; Bingo Bango Bongo's tallies come after.
+    #expect(HoleEntrySequence.steps(requiredInputs: [.holeEvents, .strokes]) == [.scores, .holeEvents])
 }
 
 @Test("Previous-round match is order-independent on player ids")

@@ -3,18 +3,21 @@ import RoundPlayEngine
 
 public enum HoleEntryStep: Equatable, Sendable {
     case partnerChoice
-    case score(seatIndex: Int)
+    /// Every player's score, on one screen. This used to be one step *per seat*, which made the
+    /// watch a forward-only wizard: the only way back to a score you'd fumbled was to swipe
+    /// backwards through everyone entered after it.
+    case scores
     case holeEvents
 }
 
 public enum HoleEntrySequence {
-    public static func steps(requiredInputs: Set<InputKind>, seatCount: Int) -> [HoleEntryStep] {
+    public static func steps(requiredInputs: Set<InputKind>) -> [HoleEntryStep] {
         var result: [HoleEntryStep] = []
         if requiredInputs.contains(.partnerChoice) {
             result.append(.partnerChoice)
         }
         if requiredInputs.contains(.strokes) {
-            result.append(contentsOf: (0..<seatCount).map { .score(seatIndex: $0) })
+            result.append(.scores)
         }
         if requiredInputs.contains(.holeEvents) {
             result.append(.holeEvents)

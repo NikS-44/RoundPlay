@@ -12,6 +12,14 @@ struct RoundPlayWatchApp: App {
             WatchRootView()
                 .environment(RoundSyncSession.shared)
                 .onAppear {
+                    #if DEBUG
+                    // Screenshot and layout-check seeding, debug builds only and only when asked
+                    // for by launch argument. `WatchDemoData` is itself entirely inside `#if
+                    // DEBUG`, so nothing here exists in an App Store archive.
+                    if WatchDemoData.isRequested {
+                        WatchDemoData.seed(into: container.mainContext)
+                    }
+                    #endif
                     RoundSyncSession.shared.activate(context: container.mainContext)
                 }
                 .onChange(of: scenePhase) { _, phase in
